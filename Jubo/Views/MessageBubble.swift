@@ -18,7 +18,14 @@ struct MessageBubble: View {
                     .clipShape(RoundedRectangle(cornerRadius: 18))
 
                 if message.role == .assistant && !message.content.isEmpty {
-                    timestampView
+                    HStack(spacing: 8) {
+                        timestampView
+
+                        // Web search badge
+                        if message.usedWebSearch {
+                            WebSearchBadge(sources: message.webSources)
+                        }
+                    }
                 }
             }
 

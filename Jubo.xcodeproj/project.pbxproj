@@ -3,13 +3,19 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		092E61B3804E9F8801327437 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 0C601F555E65C56730F577A7 /* MLXLMCommon */; };
+		0AFA0E65B87EF6711AA66C87 /* IntentDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98DF45E68CD16EAF7F8C2A94 /* IntentDetector.swift */; };
+		17E851C3AA071D55922E6D29 /* WebSearchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CCFE0634586465553270916 /* WebSearchCoordinator.swift */; };
+		1955C1FF97B99501015CE8DB /* WebSearchIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCCC28C7F042EE03B6370F9 /* WebSearchIndicator.swift */; };
 		222F8A10A5DA8A7EB09C4AD3 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0095A99BF5C9E3DE2720938C /* LLMService.swift */; };
+		2938CF5A8A400B358C045F50 /* WebSearchError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7927A588297A2D7C8F34D410 /* WebSearchError.swift */; };
+		4E5B5F39C015F4EA31C67FD6 /* QuerySanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AE14E5467E53EBD0720D29F /* QuerySanitizer.swift */; };
 		56A82297ADCC034DEC96451D /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = D4C5365B4C6DE80FE85529A2 /* MLXLLM */; };
+		5D9A3A2ECE5E6E1B6736B78F /* SearchUsageTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01ED81CF2D1F216861315F22 /* SearchUsageTracker.swift */; };
 		646554240DC02BC141B43540 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1E52C125609CDFDB40A0B4 /* ContentView.swift */; };
 		832768319A10696FB161263E /* MessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA85695206537E57C6040CD7 /* MessageBubble.swift */; };
 		866C748E600BB498C95CB05A /* JuboApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA80E41C347597FEDD95E77 /* JuboApp.swift */; };
@@ -19,21 +25,31 @@
 		D8667A80F1D458EC5E7A762F /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058637BD2CD09E275DE8899F /* Conversation.swift */; };
 		EB0E284A8C6D7AEE9206D71B /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 165319D3788EF9D805F20FD3 /* ChatView.swift */; };
 		F5C50BE62C51A8A88ECB6B1C /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3D13524EBD2D3F1B01EA28 /* Message.swift */; };
+		FB8F0BE11514EBA548F0672B /* SearchContextFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5179ACD356D24C317F32B95 /* SearchContextFormatter.swift */; };
+		FE2AEDFC5F8570B7B1B3C7D7 /* BraveSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FFF56DC9936930D5645B988 /* BraveSearchService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0095A99BF5C9E3DE2720938C /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
+		01ED81CF2D1F216861315F22 /* SearchUsageTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchUsageTracker.swift; sourceTree = "<group>"; };
 		058637BD2CD09E275DE8899F /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
 		165319D3788EF9D805F20FD3 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		290262D06893EC7C8725CDA3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2BA80E41C347597FEDD95E77 /* JuboApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuboApp.swift; sourceTree = "<group>"; };
-		34FD4806632B808FFDB8881F /* Jubo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jubo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		34FD4806632B808FFDB8881F /* Jubo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Jubo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3AE14E5467E53EBD0720D29F /* QuerySanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuerySanitizer.swift; sourceTree = "<group>"; };
+		5FFF56DC9936930D5645B988 /* BraveSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BraveSearchService.swift; sourceTree = "<group>"; };
+		6CCFE0634586465553270916 /* WebSearchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchCoordinator.swift; sourceTree = "<group>"; };
 		74376A2AE0A35BA3D060BCF1 /* ConversationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationListView.swift; sourceTree = "<group>"; };
+		7927A588297A2D7C8F34D410 /* WebSearchError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchError.swift; sourceTree = "<group>"; };
+		98DF45E68CD16EAF7F8C2A94 /* IntentDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentDetector.swift; sourceTree = "<group>"; };
 		BE1E52C125609CDFDB40A0B4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C5179ACD356D24C317F32B95 /* SearchContextFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchContextFormatter.swift; sourceTree = "<group>"; };
 		DA85695206537E57C6040CD7 /* MessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubble.swift; sourceTree = "<group>"; };
 		E90508DE35F29BBE035872CE /* Jubo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Jubo.entitlements; sourceTree = "<group>"; };
 		F8D6ABDB23AC4FD959C23F37 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		FC3D13524EBD2D3F1B01EA28 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		FFCCC28C7F042EE03B6370F9 /* WebSearchIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchIndicator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +88,20 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		5A28A7307654106C9776EB2F /* WebSearch */ = {
+			isa = PBXGroup;
+			children = (
+				5FFF56DC9936930D5645B988 /* BraveSearchService.swift */,
+				98DF45E68CD16EAF7F8C2A94 /* IntentDetector.swift */,
+				3AE14E5467E53EBD0720D29F /* QuerySanitizer.swift */,
+				C5179ACD356D24C317F32B95 /* SearchContextFormatter.swift */,
+				01ED81CF2D1F216861315F22 /* SearchUsageTracker.swift */,
+				6CCFE0634586465553270916 /* WebSearchCoordinator.swift */,
+				7927A588297A2D7C8F34D410 /* WebSearchError.swift */,
+			);
+			path = WebSearch;
+			sourceTree = "<group>";
+		};
 		6754246025FD967B4829A470 /* Models */ = {
 			isa = PBXGroup;
 			children = (
@@ -85,6 +115,7 @@
 			isa = PBXGroup;
 			children = (
 				0095A99BF5C9E3DE2720938C /* LLMService.swift */,
+				5A28A7307654106C9776EB2F /* WebSearch */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -119,6 +150,7 @@
 				74376A2AE0A35BA3D060BCF1 /* ConversationListView.swift */,
 				DA85695206537E57C6040CD7 /* MessageBubble.swift */,
 				290262D06893EC7C8725CDA3 /* SettingsView.swift */,
+				FFCCC28C7F042EE03B6370F9 /* WebSearchIndicator.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -173,6 +205,7 @@
 			packageReferences = (
 				3DCF7A5118D22704F7535484 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 			);
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -186,16 +219,24 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE2AEDFC5F8570B7B1B3C7D7 /* BraveSearchService.swift in Sources */,
 				EB0E284A8C6D7AEE9206D71B /* ChatView.swift in Sources */,
 				B09CF49AF9A5098BA3F1A334 /* ChatViewModel.swift in Sources */,
 				646554240DC02BC141B43540 /* ContentView.swift in Sources */,
 				D8667A80F1D458EC5E7A762F /* Conversation.swift in Sources */,
 				B04A41E933CB24FB7773B0DA /* ConversationListView.swift in Sources */,
+				0AFA0E65B87EF6711AA66C87 /* IntentDetector.swift in Sources */,
 				866C748E600BB498C95CB05A /* JuboApp.swift in Sources */,
 				222F8A10A5DA8A7EB09C4AD3 /* LLMService.swift in Sources */,
 				F5C50BE62C51A8A88ECB6B1C /* Message.swift in Sources */,
 				832768319A10696FB161263E /* MessageBubble.swift in Sources */,
+				4E5B5F39C015F4EA31C67FD6 /* QuerySanitizer.swift in Sources */,
+				FB8F0BE11514EBA548F0672B /* SearchContextFormatter.swift in Sources */,
+				5D9A3A2ECE5E6E1B6736B78F /* SearchUsageTracker.swift in Sources */,
 				9D6536B7F556D345E84B1554 /* SettingsView.swift in Sources */,
+				17E851C3AA071D55922E6D29 /* WebSearchCoordinator.swift in Sources */,
+				2938CF5A8A400B358C045F50 /* WebSearchError.swift in Sources */,
+				1955C1FF97B99501015CE8DB /* WebSearchIndicator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -267,7 +308,6 @@
 				CODE_SIGN_ENTITLEMENTS = Jubo/Jubo.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 8U7A8KJH9P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_GENERATION_MODE = GeneratedFile;
@@ -295,7 +335,6 @@
 				CODE_SIGN_ENTITLEMENTS = Jubo/Jubo.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 8U7A8KJH9P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_GENERATION_MODE = GeneratedFile;

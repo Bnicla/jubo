@@ -186,6 +186,14 @@ struct SettingsSheet: View {
     @ObservedObject var llmService: LLMService
     @Environment(\.dismiss) private var dismiss
 
+    // Web search settings
+    @State private var webSearchEnabled = true
+    @State private var apiKey = ""
+    @State private var searchesThisMonth = 0
+    @State private var showingAPIKeyAlert = false
+
+    private let webSearchCoordinator = WebSearchCoordinator()
+
     var body: some View {
         NavigationStack {
             List {
@@ -198,13 +206,47 @@ struct SettingsSheet: View {
                     }
                 }
 
+                Section {
+                    Toggle("Enable Web Search", isOn: $webSearchEnabled)
+                        .onChange(of: webSearchEnabled) { _, newValue in
+                            Task {
+                                await webSearchCoordinator.setWebSearchEnabled(newValue)
+                            }
+                        }
+
+                    if webSearchEnabled {
+                        Button {
+                            showingAPIKeyAlert = true
+                        } label: {
+                            HStack {
+                                Label("API Key", systemImage: "key")
+                                Spacer()
+                                Text(apiKey.isEmpty ? "Not Set" : "Configured")
+                                    .foregroundColor(apiKey.isEmpty ? .orange : .green)
+                            }
+                        }
+                        .foregroundColor(.primary)
+
+                        HStack {
+                            Label("Usage", systemImage: "chart.bar")
+                            Spacer()
+                            Text("\(searchesThisMonth) / 2000")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Web Search")
+                } footer: {
+                    Text("Web search allows Jubo to fetch current information from the internet. Queries are anonymized before sending.")
+                }
+
                 Section("About") {
-                    LabeledContent("Version", value: "1.0.0")
+                    LabeledContent("Version", value: "0.2.0")
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Privacy")
                             .font(.headline)
-                        Text("All processing happens on-device. Your conversations never leave your phone.")
+                        Text("All AI processing happens on-device. Web searches are anonymized - personal information is removed before any query leaves your phone.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -218,7 +260,27 @@ struct SettingsSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .task {
+                await loadWebSearchSettings()
+            }
+            .alert("Brave Search API Key", isPresented: $showingAPIKeyAlert) {
+                TextField("API Key", text: $apiKey)
+                Button("Cancel", role: .cancel) { }
+                Button("Save") {
+                    Task {
+                        await webSearchCoordinator.setAPIKey(apiKey)
+                    }
+                }
+            } message: {
+                Text("Get a free API key at api.search.brave.com (2000 searches/month)")
+            }
         }
+    }
+
+    private func loadWebSearchSettings() async {
+        webSearchEnabled = await webSearchCoordinator.isWebSearchEnabled()
+        apiKey = await webSearchCoordinator.getAPIKey() ?? ""
+        searchesThisMonth = await webSearchCoordinator.searchesThisMonth
     }
 
     private var statusText: String {

@@ -36,6 +36,10 @@ final class StoredMessage {
     var content: String
     var timestamp: Date
 
+    // Web search metadata
+    var usedWebSearch: Bool = false
+    var webSourcesData: Data?  // JSON encoded [String]
+
     var conversation: Conversation?
 
     init(role: MessageRole, content: String) {
@@ -43,6 +47,19 @@ final class StoredMessage {
         self.role = role.rawValue
         self.content = content
         self.timestamp = Date()
+        self.usedWebSearch = false
+        self.webSourcesData = nil
+    }
+
+    /// Get/set web sources as string array
+    var webSources: [String]? {
+        get {
+            guard let data = webSourcesData else { return nil }
+            return try? JSONDecoder().decode([String].self, from: data)
+        }
+        set {
+            webSourcesData = try? JSONEncoder().encode(newValue)
+        }
     }
 
     /// Convert to the Message struct used by the view model
@@ -51,7 +68,9 @@ final class StoredMessage {
             id: id,
             role: MessageRole(rawValue: role) ?? .user,
             content: content,
-            timestamp: timestamp
+            timestamp: timestamp,
+            usedWebSearch: usedWebSearch,
+            webSources: webSources
         )
     }
 
@@ -60,6 +79,8 @@ final class StoredMessage {
         let stored = StoredMessage(role: message.role, content: message.content)
         stored.id = message.id
         stored.timestamp = message.timestamp
+        stored.usedWebSearch = message.usedWebSearch
+        stored.webSources = message.webSources
         return stored
     }
 }

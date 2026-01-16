@@ -194,37 +194,44 @@ struct ChatView: View {
     // MARK: - Input Area
 
     private var inputArea: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            TextField("Message", text: $viewModel.inputText, axis: .vertical)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .lineLimit(1...5)
-                .focused($isInputFocused)
-                .disabled(!viewModel.isModelReady || viewModel.isGenerating)
-                .onSubmit {
-                    if !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Task {
-                            await viewModel.sendMessage()
+        VStack(spacing: 0) {
+            // Web search status indicator
+            if viewModel.webSearchState != .idle {
+                WebSearchIndicator(state: viewModel.webSearchState)
+            }
+
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("Message", text: $viewModel.inputText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .lineLimit(1...5)
+                    .focused($isInputFocused)
+                    .disabled(!viewModel.isModelReady || viewModel.isGenerating)
+                    .onSubmit {
+                        if !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Task {
+                                await viewModel.sendMessage()
+                            }
                         }
                     }
-                }
 
-            Button {
-                Task {
-                    await viewModel.sendMessage()
+                Button {
+                    Task {
+                        await viewModel.sendMessage()
+                    }
+                } label: {
+                    Image(systemName: viewModel.isGenerating ? "stop.fill" : "arrow.up.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(sendButtonColor)
                 }
-            } label: {
-                Image(systemName: viewModel.isGenerating ? "stop.fill" : "arrow.up.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(sendButtonColor)
+                .disabled(!canSend)
             }
-            .disabled(!canSend)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
         .background(Color(.systemBackground))
     }
 

@@ -13,7 +13,9 @@
       "Bash(find:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git tag:*)",
+      "WebFetch(domain:machinelearning.apple.com)"
     ]
   }
 }

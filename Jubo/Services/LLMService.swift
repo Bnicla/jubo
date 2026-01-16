@@ -103,10 +103,17 @@ class LLMService: ObservableObject {
     }
 
     /// Generate a response for the given messages
-    func generate(messages: [Message]) -> AsyncThrowingStream<String, Error> {
+    /// - Parameters:
+    ///   - messages: The conversation messages
+    ///   - searchContext: Optional web search context to prepend to the prompt
+    func generate(messages: [Message], searchContext: String? = nil) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
-                await self.performGeneration(messages: messages, continuation: continuation)
+                await self.performGeneration(
+                    messages: messages,
+                    searchContext: searchContext,
+                    continuation: continuation
+                )
             }
         }
     }
@@ -115,6 +122,7 @@ class LLMService: ObservableObject {
 
     private func performGeneration(
         messages: [Message],
+        searchContext: String?,
         continuation: AsyncThrowingStream<String, Error>.Continuation
     ) async {
         guard let chatSession = chatSession else {
@@ -128,13 +136,22 @@ class LLMService: ObservableObject {
             return
         }
 
+        // Build the prompt - use search context if provided, otherwise just the user message
+        let prompt: String
+        if let context = searchContext {
+            // Search context already includes the user's question
+            prompt = context
+        } else {
+            prompt = lastUserMessage.content
+        }
+
         // Track generation stats
         let startTime = Date()
         var tokenCount = 0
 
         do {
             // Stream the response
-            for try await chunk in chatSession.streamResponse(to: lastUserMessage.content) {
+            for try await chunk in chatSession.streamResponse(to: prompt) {
                 tokenCount += 1
                 continuation.yield(chunk)
             }
