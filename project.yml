@@ -36,6 +36,7 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_CFBundleDisplayName: Jubo
         INFOPLIST_KEY_NSCalendarsUsageDescription: "Jubo uses your calendar to help answer questions about your schedule."
         INFOPLIST_KEY_NSRemindersUsageDescription: "Jubo uses your reminders to help you track tasks and to-dos."
