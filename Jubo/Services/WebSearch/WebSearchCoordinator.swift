@@ -31,17 +31,29 @@ class WebSearchCoordinator: ObservableObject {
 
     // MARK: - Search State
 
+    /// Type of data being fetched for confirmation UI.
+    enum ConfirmationType: Equatable {
+        case webSearch
+        case weather
+        case calendar
+        case reminders
+    }
+
     /// Current state of the search/fetch operation.
     /// Published for UI binding to show appropriate indicators.
     enum SearchState: Equatable {
         case idle
         case detectingIntent
-        case awaitingConfirmation(query: String, isWeather: Bool)
+        case awaitingConfirmation(query: String, type: ConfirmationType)
         case sanitizing
         case searching(query: String)
         case fetchingWeather(location: String)
+        case fetchingCalendar
+        case fetchingReminders
         case complete(resultCount: Int)
         case weatherComplete
+        case calendarComplete(eventCount: Int)
+        case remindersComplete(reminderCount: Int)
         case failed(reason: String)
         case skipped(reason: String)
     }
@@ -79,14 +91,18 @@ class WebSearchCoordinator: ObservableObject {
 
     private let searchService = BraveSearchService()
     private let weatherService = WeatherKitService()
+    private let calendarService = CalendarService()
     private let usageTracker = SearchUsageTracker()
     private weak var llmService: LLMService?
 
     /// Expected response detail level (set during intent detection)
     private(set) var expectedDetailLevel: ResponseDetailLevel = .detailed
 
-    /// Detected query type (weather, sports, general)
+    /// Detected query type (weather, calendar, reminders, sports, general)
     private(set) var detectedQueryType: QueryType = .general
+
+    /// Detected calendar time range (for calendar queries)
+    private(set) var detectedTimeRange: CalendarTimeRange = .today
 
     // MARK: - Initialization
 
@@ -130,11 +146,27 @@ class WebSearchCoordinator: ObservableObject {
         state = .detectingIntent
         print("[WebSearch] Checking query: \(query)")
 
-        // First, classify query type (weather, sports, general)
+        // First, classify query type (weather, calendar, reminders, sports, general)
         detectedQueryType = IntentDetector.classifyQueryType(query)
         print("[WebSearch] Query type: \(detectedQueryType)")
 
-        // Weather queries can be handled directly with WeatherKit (no API key needed)
+        // Calendar queries - route to EventKit
+        if detectedQueryType == .calendar {
+            detectedTimeRange = IntentDetector.extractCalendarTimeRange(from: query)
+            let timeDesc = timeRangeDescription(detectedTimeRange)
+            print("[Calendar] CONFIRM: Requesting confirmation for calendar (\(timeDesc))")
+            state = .awaitingConfirmation(query: timeDesc, type: .calendar)
+            return true
+        }
+
+        // Reminder queries - route to EventKit
+        if detectedQueryType == .reminders {
+            print("[Reminders] CONFIRM: Requesting confirmation for reminders")
+            state = .awaitingConfirmation(query: query, type: .reminders)
+            return true
+        }
+
+        // Weather queries - route to WeatherKit (no API key needed)
         if detectedQueryType == .weather {
             // Extract or infer location for weather
             var location = IntentDetector.extractWeatherLocation(from: query)
@@ -149,7 +181,7 @@ class WebSearchCoordinator: ObservableObject {
 
             if let loc = location, !loc.isEmpty {
                 print("[Weather] CONFIRM: Requesting confirmation for weather in '\(loc)'")
-                state = .awaitingConfirmation(query: loc, isWeather: true)
+                state = .awaitingConfirmation(query: loc, type: .weather)
                 return true
             } else {
                 print("[Weather] SKIP: No location found in query or preferences")
@@ -157,7 +189,7 @@ class WebSearchCoordinator: ObservableObject {
             }
         }
 
-        // For non-weather queries, check if web search is enabled
+        // For non-specialized queries, check if web search is enabled
         guard await usageTracker.isWebSearchEnabled else {
             print("[WebSearch] SKIP: Web search disabled")
             state = .idle
@@ -213,14 +245,34 @@ class WebSearchCoordinator: ObservableObject {
 
         // Search is possible - request confirmation
         print("[WebSearch] CONFIRM: Requesting confirmation for '\(enhancedQuery)'")
-        state = .awaitingConfirmation(query: enhancedQuery, isWeather: false)
+        state = .awaitingConfirmation(query: enhancedQuery, type: .webSearch)
         return true
+    }
+
+    // MARK: - Helper Methods
+
+    /// Convert CalendarTimeRange to human-readable description
+    private func timeRangeDescription(_ range: CalendarTimeRange) -> String {
+        switch range {
+        case .today:
+            return "today"
+        case .tomorrow:
+            return "tomorrow"
+        case .thisWeek:
+            return "this week"
+        case .specific(let date):
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            return formatter.string(from: date)
+        }
     }
 
     /// Perform the confirmed search/fetch operation.
     ///
     /// Routes to the appropriate service based on `detectedQueryType`:
     /// - `.weather` → WeatherKit (no API quota used)
+    /// - `.calendar` → EventKit for schedule data
+    /// - `.reminders` → EventKit for reminders
     /// - `.sports` → Sports API (future)
     /// - `.general` → Brave Search API
     ///
@@ -230,6 +282,16 @@ class WebSearchCoordinator: ObservableObject {
         // Route weather queries to WeatherKit
         if detectedQueryType == .weather {
             return await performWeatherFetch(for: query)
+        }
+
+        // Route calendar queries to EventKit
+        if detectedQueryType == .calendar {
+            return await performCalendarFetch(for: query)
+        }
+
+        // Route reminder queries to EventKit
+        if detectedQueryType == .reminders {
+            return await performRemindersFetch(for: query)
         }
 
         // Otherwise, perform web search
@@ -305,6 +367,132 @@ class WebSearchCoordinator: ObservableObject {
                 detailLevel: expectedDetailLevel
             )
         }
+    }
+
+    /// Fetch calendar events using EventKit.
+    ///
+    /// This method:
+    /// 1. Requests calendar access if needed
+    /// 2. Fetches events for the detected time range
+    /// 3. Formats events for LLM context injection
+    ///
+    /// - Parameter query: The calendar-related query
+    /// - Returns: SearchAttemptResult with calendar context or error
+    private func performCalendarFetch(for query: String) async -> SearchAttemptResult {
+        state = .fetchingCalendar
+        print("[Calendar] Fetching events for: \(timeRangeDescription(detectedTimeRange))")
+
+        // Request access if needed
+        if !calendarService.hasCalendarAccess {
+            let granted = await calendarService.requestCalendarAccess()
+            if !granted {
+                state = .failed(reason: "Calendar access denied")
+                return SearchAttemptResult(
+                    originalQuery: query,
+                    sanitizedQuery: nil,
+                    searchResults: nil,
+                    formattedContext: nil,
+                    sources: nil,
+                    error: .apiError("Calendar access was denied. Please enable in Settings."),
+                    detailLevel: expectedDetailLevel
+                )
+            }
+        }
+
+        // Fetch events based on detected time range
+        let events: [CalendarService.CalendarEvent]
+        let dateDescription: String
+
+        switch detectedTimeRange {
+        case .today:
+            events = await calendarService.fetchTodayEvents()
+            dateDescription = "Today"
+        case .tomorrow:
+            events = await calendarService.fetchTomorrowEvents()
+            dateDescription = "Tomorrow"
+        case .thisWeek:
+            events = await calendarService.fetchThisWeekEvents()
+            dateDescription = "This Week"
+        case .specific(let date):
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            dateDescription = formatter.string(from: date)
+            // For now, fetch today's events for specific dates
+            events = await calendarService.fetchTodayEvents()
+        }
+
+        // Format for LLM
+        let context = calendarService.formatEventsForLLM(
+            events: events,
+            query: query,
+            dateDescription: dateDescription
+        )
+
+        state = .calendarComplete(eventCount: events.count)
+        print("[Calendar] Context ready: \(events.count) events")
+
+        return SearchAttemptResult(
+            originalQuery: query,
+            sanitizedQuery: dateDescription,
+            searchResults: nil,
+            formattedContext: context,
+            sources: ["Calendar"],
+            error: nil,
+            detailLevel: expectedDetailLevel
+        )
+    }
+
+    /// Fetch reminders using EventKit.
+    ///
+    /// This method:
+    /// 1. Requests reminder access if needed
+    /// 2. Fetches incomplete reminders
+    /// 3. Formats reminders for LLM context injection
+    ///
+    /// - Parameter query: The reminder-related query
+    /// - Returns: SearchAttemptResult with reminder context or error
+    private func performRemindersFetch(for query: String) async -> SearchAttemptResult {
+        state = .fetchingReminders
+        print("[Reminders] Fetching pending reminders")
+
+        // Request access if needed
+        if !calendarService.hasReminderAccess {
+            let granted = await calendarService.requestReminderAccess()
+            if !granted {
+                state = .failed(reason: "Reminders access denied")
+                return SearchAttemptResult(
+                    originalQuery: query,
+                    sanitizedQuery: nil,
+                    searchResults: nil,
+                    formattedContext: nil,
+                    sources: nil,
+                    error: .apiError("Reminders access was denied. Please enable in Settings."),
+                    detailLevel: expectedDetailLevel
+                )
+            }
+        }
+
+        // Fetch reminders
+        let reminders = await calendarService.fetchTodayReminders()
+
+        // Format for LLM
+        let context = calendarService.formatRemindersForLLM(
+            reminders: reminders,
+            query: query
+        )
+
+        state = .remindersComplete(reminderCount: reminders.count)
+        print("[Reminders] Context ready: \(reminders.count) reminders")
+
+        return SearchAttemptResult(
+            originalQuery: query,
+            sanitizedQuery: "reminders",
+            searchResults: nil,
+            formattedContext: context,
+            sources: ["Reminders"],
+            error: nil,
+            detailLevel: expectedDetailLevel
+        )
     }
 
     /// Perform web search using Brave Search API.

@@ -177,7 +177,7 @@ class ChatViewModel: ObservableObject {
         error = nil
 
         // Add placeholder for assistant response
-        let whaassistantMessage = Message(role: .assistant, content: "")
+        let assistantMessage = Message(role: .assistant, content: "")
         messages.append(assistantMessage)
         let assistantIndex = messages.count - 1
 
@@ -195,10 +195,14 @@ class ChatViewModel: ObservableObject {
                 messages[assistantIndex].content += token
             }
 
-            // Mark assistant message with web search info if applicable
-            if searchContext != nil {
-                messages[assistantIndex].usedWebSearch = true
-                messages[assistantIndex].webSources = pendingWebSources
+            // Mark assistant message with data source info if applicable
+            if searchContext != nil, let sources = pendingWebSources {
+                // Only show "Web" badge for actual web searches, not calendar/weather/reminders
+                let isWebSearch = sources.contains { $0.hasPrefix("http") }
+                if isWebSearch {
+                    messages[assistantIndex].usedWebSearch = true
+                    messages[assistantIndex].webSources = sources
+                }
             }
 
             // Save the completed assistant message

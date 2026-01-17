@@ -19,8 +19,8 @@ struct WebSearchIndicator: View {
                     showProgress: true
                 )
 
-            case .awaitingConfirmation(let query, let isWeather):
-                confirmationView(query: query, isWeather: isWeather)
+            case .awaitingConfirmation(let query, let type):
+                confirmationView(query: query, type: type)
 
             case .sanitizing:
                 statusRow(
@@ -46,6 +46,22 @@ struct WebSearchIndicator: View {
                     showProgress: true
                 )
 
+            case .fetchingCalendar:
+                statusRow(
+                    icon: "calendar",
+                    iconColor: .blue,
+                    text: "Checking calendar...",
+                    showProgress: true
+                )
+
+            case .fetchingReminders:
+                statusRow(
+                    icon: "checklist",
+                    iconColor: .blue,
+                    text: "Getting reminders...",
+                    showProgress: true
+                )
+
             case .complete(let count):
                 statusRow(
                     icon: "checkmark.circle.fill",
@@ -59,6 +75,22 @@ struct WebSearchIndicator: View {
                     icon: "checkmark.circle.fill",
                     iconColor: .green,
                     text: "Weather data ready",
+                    showProgress: false
+                )
+
+            case .calendarComplete(let count):
+                statusRow(
+                    icon: "checkmark.circle.fill",
+                    iconColor: .green,
+                    text: "\(count) event\(count == 1 ? "" : "s") found",
+                    showProgress: false
+                )
+
+            case .remindersComplete(let count):
+                statusRow(
+                    icon: "checkmark.circle.fill",
+                    iconColor: .green,
+                    text: "\(count) reminder\(count == 1 ? "" : "s") found",
                     showProgress: false
                 )
 
@@ -81,14 +113,16 @@ struct WebSearchIndicator: View {
         }
     }
 
-    private func confirmationView(query: String, isWeather: Bool) -> some View {
-        VStack(spacing: 8) {
+    private func confirmationView(query: String, type: WebSearchCoordinator.ConfirmationType) -> some View {
+        let (icon, promptText, buttonText) = confirmationContent(for: type, query: query)
+
+        return VStack(spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: isWeather ? "cloud.sun" : "globe")
+                Image(systemName: icon)
                     .foregroundColor(.blue)
                     .font(.caption)
 
-                Text(isWeather ? "Get weather for \(query.capitalized)?" : "Search web for: \(truncate(query, to: 35))?")
+                Text(promptText)
                     .font(.caption)
                     .foregroundColor(.primary)
                     .lineLimit(1)
@@ -100,7 +134,7 @@ struct WebSearchIndicator: View {
                 Button {
                     onConfirmSearch?()
                 } label: {
-                    Label(isWeather ? "Get Weather" : "Search Web", systemImage: isWeather ? "cloud.sun" : "globe")
+                    Label(buttonText, systemImage: icon)
                         .font(.caption)
                         .fontWeight(.medium)
                 }
@@ -120,6 +154,22 @@ struct WebSearchIndicator: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Color(.systemGray6))
+    }
+
+    private func confirmationContent(
+        for type: WebSearchCoordinator.ConfirmationType,
+        query: String
+    ) -> (icon: String, prompt: String, button: String) {
+        switch type {
+        case .webSearch:
+            return ("globe", "Search web for: \(truncate(query, to: 35))?", "Search Web")
+        case .weather:
+            return ("cloud.sun", "Get weather for \(query.capitalized)?", "Get Weather")
+        case .calendar:
+            return ("calendar", "Check calendar for \(query)?", "Check Calendar")
+        case .reminders:
+            return ("checklist", "View pending reminders?", "View Reminders")
+        }
     }
 
     private func statusRow(icon: String, iconColor: Color, text: String, showProgress: Bool) -> some View {

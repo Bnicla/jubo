@@ -24,10 +24,22 @@ enum SearchIntent {
 enum QueryType {
     /// Weather queries - route to WeatherKit for actual weather data
     case weather
+    /// Calendar queries - route to EventKit for schedule data
+    case calendar
+    /// Reminder queries - route to EventKit for reminders
+    case reminders
     /// Sports queries - route to sports API for scores/schedules (future)
     case sports
     /// General queries - use web search or LLM knowledge
     case general
+}
+
+/// Time range for calendar queries.
+enum CalendarTimeRange {
+    case today
+    case tomorrow
+    case thisWeek
+    case specific(Date)
 }
 
 /// Keyword-based intent detection for query routing.
@@ -250,15 +262,71 @@ struct IntentDetector {
         "next match"
     ]
 
+    /// Calendar-related keywords.
+    /// When detected, query is routed to EventKit for schedule data.
+    private static let calendarKeywords: [String] = [
+        "schedule",
+        "calendar",
+        "meeting",
+        "meetings",
+        "appointment",
+        "appointments",
+        "event",
+        "events",
+        "what's on",
+        "what is on",
+        "do i have",
+        "am i free",
+        "am i busy",
+        "my day",
+        "my schedule",
+        "my calendar",
+        "planned for",
+        "happening today",
+        "happening tomorrow"
+    ]
+
+    /// Reminder-related keywords.
+    /// When detected, query is routed to EventKit for reminders.
+    private static let reminderKeywords: [String] = [
+        "remind me",
+        "reminder",
+        "reminders",
+        "to-do",
+        "todo",
+        "to do list",
+        "task",
+        "tasks",
+        "don't forget",
+        "need to remember",
+        "my reminders",
+        "pending tasks",
+        "what do i need to"
+    ]
+
     /// Classify the type of query for routing to specialized services.
     ///
     /// This enables bypassing web search for queries that can be better served
-    /// by dedicated APIs (e.g., WeatherKit for weather, sports APIs for scores).
+    /// by dedicated APIs (e.g., WeatherKit for weather, EventKit for calendar).
     ///
     /// - Parameter query: The user's query text
     /// - Returns: QueryType indicating which service should handle the query
     static func classifyQueryType(_ query: String) -> QueryType {
         let lowercased = query.lowercased()
+
+        // Check for reminder queries first (more specific)
+        for keyword in reminderKeywords {
+            if lowercased.contains(keyword) {
+                return .reminders
+            }
+        }
+
+        // Check for calendar queries
+        for keyword in calendarKeywords {
+            if lowercased.contains(keyword) {
+                return .calendar
+            }
+        }
 
         // Check for weather queries
         for keyword in weatherKeywords {
@@ -291,10 +359,10 @@ struct IntentDetector {
 
         // Regex patterns to match various "weather in [location]" formats
         let patterns = [
-            "weather (?:in|for|at) ([\\w\\s,]+?)(?:\\?|$|\\.|!|this|today|tomorrow|weekend|week)",
+            "weather (?:in|for|at) ([\\w\\s,]+?)(?:\\?|$|\\.|!|this|today|tomorrow|weekend|week|right|now|currently)",
             "(?:in|for|at) ([\\w\\s,]+?) weather",
-            "([\\w\\s,]+?) weather (?:today|tomorrow|this|forecast)",
-            "what(?:'s| is) the weather (?:in|for|at|like in) ([\\w\\s,]+)"
+            "([\\w\\s,]+?) weather (?:today|tomorrow|this|forecast|right|now)",
+            "what(?:'s| is) the weather (?:in|for|at|like in) ([\\w\\s,]+?)(?:\\?|$|\\.|!|right|now|today|tomorrow)"
         ]
 
         for pattern in patterns {
@@ -307,7 +375,7 @@ struct IntentDetector {
                     .trimmingCharacters(in: CharacterSet(charactersIn: "?.,!"))
 
                 // Filter out time-related words that might be captured
-                let timeWords = ["today", "tomorrow", "weekend", "week", "now", "this", "the", "like"]
+                let timeWords = ["today", "tomorrow", "weekend", "week", "now", "right now", "right", "this", "the", "like", "currently", "current"]
                 for word in timeWords {
                     location = location.replacingOccurrences(of: word, with: "").trimmingCharacters(in: .whitespaces)
                 }
@@ -319,5 +387,106 @@ struct IntentDetector {
         }
 
         return nil
+    }
+
+    // MARK: - Calendar Time Range Extraction
+
+    /// Extract the time range from a calendar query.
+    /// Defaults to today if no time reference found.
+    ///
+    /// - Parameter query: The calendar-related query
+    /// - Returns: CalendarTimeRange indicating when to fetch events
+    static func extractCalendarTimeRange(from query: String) -> CalendarTimeRange {
+        let lowercased = query.lowercased()
+
+        // Check for "tomorrow"
+        if lowercased.contains("tomorrow") {
+            return .tomorrow
+        }
+
+        // Check for "this week" / "next week" / "week"
+        if lowercased.contains("this week") || lowercased.contains("the week") ||
+           lowercased.contains("next week") || lowercased.contains("next few days") ||
+           lowercased.contains("coming days") || lowercased.contains("coming week") {
+            return .thisWeek
+        }
+
+        // Default to today
+        return .today
+    }
+
+    /// Check if a query is asking to create a reminder (vs. just viewing reminders).
+    ///
+    /// - Parameter query: The reminder-related query
+    /// - Returns: True if the query wants to create a new reminder
+    static func isReminderCreationQuery(_ query: String) -> Bool {
+        let lowercased = query.lowercased()
+
+        let creationPatterns = [
+            "remind me to",
+            "remind me about",
+            "set a reminder",
+            "create a reminder",
+            "add a reminder",
+            "don't let me forget",
+            "make sure i"
+        ]
+
+        return creationPatterns.contains { lowercased.contains($0) }
+    }
+
+    /// Extract the reminder content and optional time from a creation query.
+    ///
+    /// - Parameter query: The reminder creation query
+    /// - Returns: Tuple of (reminder text, optional due date description)
+    static func extractReminderDetails(from query: String) -> (title: String, timeHint: String?) {
+        var text = query
+
+        // Remove common prefixes
+        let prefixes = [
+            "remind me to",
+            "remind me about",
+            "set a reminder to",
+            "set a reminder for",
+            "create a reminder to",
+            "add a reminder to",
+            "don't let me forget to",
+            "make sure i"
+        ]
+
+        let lowercased = text.lowercased()
+        for prefix in prefixes {
+            if lowercased.hasPrefix(prefix) {
+                text = String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces)
+                break
+            }
+        }
+
+        // Try to extract time hint
+        var timeHint: String? = nil
+        let timePatterns = [
+            ("tomorrow", "tomorrow"),
+            ("tonight", "tonight"),
+            ("this evening", "this evening"),
+            ("this afternoon", "this afternoon"),
+            ("this morning", "this morning"),
+            ("next week", "next week"),
+            ("in an hour", "in 1 hour"),
+            ("in \\d+ hours?", nil),  // Regex pattern
+            ("at \\d+", nil)  // "at 5" or "at 5pm"
+        ]
+
+        for (pattern, hint) in timePatterns {
+            if text.lowercased().contains(pattern) || (hint == nil && text.range(of: pattern, options: .regularExpression) != nil) {
+                timeHint = hint ?? pattern
+                // Remove time from title
+                if let range = text.range(of: pattern, options: [.caseInsensitive, .regularExpression]) {
+                    text = text.replacingCharacters(in: range, with: "").trimmingCharacters(in: .whitespaces)
+                }
+                break
+            }
+        }
+
+        return (text, timeHint)
     }
 }
