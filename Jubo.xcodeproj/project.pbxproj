@@ -30,6 +30,7 @@
 		D2754BF765CC35BE084A648E /* MemoryExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E13E4334CF6B0A2B14ABA6 /* MemoryExtractor.swift */; };
 		D3EFB9E68869AD5F9DE216D7 /* UserMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29A842C0D1AF8A8FDC79FFD /* UserMemory.swift */; };
 		D8667A80F1D458EC5E7A762F /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058637BD2CD09E275DE8899F /* Conversation.swift */; };
+		D89AADB6D5E6BE369C4C6155 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4C2941981969B5554BFF5569 /* Assets.xcassets */; };
 		EB0E284A8C6D7AEE9206D71B /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 165319D3788EF9D805F20FD3 /* ChatView.swift */; };
 		F5C50BE62C51A8A88ECB6B1C /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3D13524EBD2D3F1B01EA28 /* Message.swift */; };
 		FA9D91138193AA8194A6460A /* LearnedMemoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FED40A4610DB84B63FA794 /* LearnedMemoriesView.swift */; };
@@ -48,6 +49,7 @@
 		34FD4806632B808FFDB8881F /* Jubo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Jubo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3AE14E5467E53EBD0720D29F /* QuerySanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuerySanitizer.swift; sourceTree = "<group>"; };
 		3FB16E453EEF1666A9C621BC /* LocationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSearchView.swift; sourceTree = "<group>"; };
+		4C2941981969B5554BFF5569 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		588B8073C67BEE37351FD1C0 /* AdaptivePromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptivePromptBuilder.swift; sourceTree = "<group>"; };
 		5FFF56DC9936930D5645B988 /* BraveSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BraveSearchService.swift; sourceTree = "<group>"; };
 		6CCFE0634586465553270916 /* WebSearchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchCoordinator.swift; sourceTree = "<group>"; };
@@ -167,6 +169,7 @@
 		C1577084E21C828A2E970842 /* Jubo */ = {
 			isa = PBXGroup;
 			children = (
+				4C2941981969B5554BFF5569 /* Assets.xcassets */,
 				BE1E52C125609CDFDB40A0B4 /* ContentView.swift */,
 				E90508DE35F29BBE035872CE /* Jubo.entitlements */,
 				2BA80E41C347597FEDD95E77 /* JuboApp.swift */,
@@ -211,6 +214,7 @@
 			buildConfigurationList = 2207562F5AF5227E76471658 /* Build configuration list for PBXNativeTarget "Jubo" */;
 			buildPhases = (
 				A90E802B018FB1D269C08B8D /* Sources */,
+				DBD9CEA91568BF1952D69469 /* Resources */,
 				7CA3390EF2B4F3C2266334E8 /* Frameworks */,
 			);
 			buildRules = (
@@ -236,6 +240,7 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					02D2838C8C6ED8E0FD857DF0 = {
+						DevelopmentTeam = 8U7A8KJH9P;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -261,6 +266,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DBD9CEA91568BF1952D69469 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D89AADB6D5E6BE369C4C6155 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A90E802B018FB1D269C08B8D /* Sources */ = {
@@ -364,6 +380,7 @@
 				CODE_SIGN_ENTITLEMENTS = Jubo/Jubo.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 8U7A8KJH9P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_GENERATION_MODE = GeneratedFile;
@@ -394,6 +411,7 @@
 				CODE_SIGN_ENTITLEMENTS = Jubo/Jubo.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 8U7A8KJH9P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_GENERATION_MODE = GeneratedFile;
