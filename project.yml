@@ -27,6 +27,8 @@ targets:
           - Package.swift
     entitlements:
       path: Jubo/Jubo.entitlements
+      properties:
+        com.apple.developer.weatherkit: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jubo.app
