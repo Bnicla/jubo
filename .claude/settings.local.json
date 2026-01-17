@@ -15,7 +15,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git tag:*)",
-      "WebFetch(domain:machinelearning.apple.com)"
+      "WebFetch(domain:machinelearning.apple.com)",
+      "Bash(ruby -e:*)",
+      "Bash(grep:*)",
+      "Bash(xargs cat:*)",
+      "WebFetch(domain:api.search.brave.com)",
+      "WebFetch(domain:api-dashboard.search.brave.com)",
+      "WebFetch(domain:simonwillison.net)"
     ]
   }
 }

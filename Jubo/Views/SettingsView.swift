@@ -51,6 +51,39 @@ struct SettingsView: View {
                     }
                 }
 
+                // Memory & Learning Section
+                Section {
+                    HStack {
+                        Label("Learned Facts", systemImage: "brain.head.profile")
+                        Spacer()
+                        Text("\(UserMemory.shared.facts.count)")
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack {
+                        Label("Interactions", systemImage: "arrow.left.arrow.right")
+                        Spacer()
+                        Text("\(UserMemory.shared.patterns.totalInteractions)")
+                            .foregroundColor(.secondary)
+                    }
+
+                    NavigationLink {
+                        LearnedMemoriesView()
+                    } label: {
+                        Label("View Learned Memories", systemImage: "list.bullet.rectangle")
+                    }
+
+                    Button(role: .destructive) {
+                        UserMemory.shared.resetAll()
+                    } label: {
+                        Label("Clear All Learned Data", systemImage: "trash")
+                    }
+                } header: {
+                    Text("Memory & Learning")
+                } footer: {
+                    Text("Jubo learns your preferences from conversations. All data stays on your device.")
+                }
+
                 // About Section
                 Section("About") {
                     HStack {

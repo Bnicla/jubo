@@ -2,6 +2,8 @@ import SwiftUI
 
 struct WebSearchIndicator: View {
     let state: WebSearchCoordinator.SearchState
+    var onConfirmSearch: (() -> Void)? = nil
+    var onDeclineSearch: (() -> Void)? = nil
 
     var body: some View {
         Group {
@@ -16,6 +18,9 @@ struct WebSearchIndicator: View {
                     text: "Analyzing query...",
                     showProgress: true
                 )
+
+            case .awaitingConfirmation(let query, let isWeather):
+                confirmationView(query: query, isWeather: isWeather)
 
             case .sanitizing:
                 statusRow(
@@ -33,11 +38,27 @@ struct WebSearchIndicator: View {
                     showProgress: true
                 )
 
+            case .fetchingWeather(let location):
+                statusRow(
+                    icon: "cloud.sun",
+                    iconColor: .blue,
+                    text: "Getting weather for \(location)...",
+                    showProgress: true
+                )
+
             case .complete(let count):
                 statusRow(
                     icon: "checkmark.circle.fill",
                     iconColor: .green,
                     text: "Found \(count) result\(count == 1 ? "" : "s")",
+                    showProgress: false
+                )
+
+            case .weatherComplete:
+                statusRow(
+                    icon: "checkmark.circle.fill",
+                    iconColor: .green,
+                    text: "Weather data ready",
                     showProgress: false
                 )
 
@@ -58,6 +79,47 @@ struct WebSearchIndicator: View {
                 )
             }
         }
+    }
+
+    private func confirmationView(query: String, isWeather: Bool) -> some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: isWeather ? "cloud.sun" : "globe")
+                    .foregroundColor(.blue)
+                    .font(.caption)
+
+                Text(isWeather ? "Get weather for \(query.capitalized)?" : "Search web for: \(truncate(query, to: 35))?")
+                    .font(.caption)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                Spacer()
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    onConfirmSearch?()
+                } label: {
+                    Label(isWeather ? "Get Weather" : "Search Web", systemImage: isWeather ? "cloud.sun" : "globe")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+
+                Button {
+                    onDeclineSearch?()
+                } label: {
+                    Label("Answer Offline", systemImage: "iphone")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(.systemGray6))
     }
 
     private func statusRow(icon: String, iconColor: Color, text: String, showProgress: Bool) -> some View {

@@ -184,6 +184,7 @@ struct ConversationRow: View {
 
 struct SettingsSheet: View {
     @ObservedObject var llmService: LLMService
+    @ObservedObject private var userPrefs = UserPreferences.shared
     @Environment(\.dismiss) private var dismiss
 
     // Web search settings
@@ -191,6 +192,7 @@ struct SettingsSheet: View {
     @State private var apiKey = ""
     @State private var searchesThisMonth = 0
     @State private var showingAPIKeyAlert = false
+    @State private var showingLocationPicker = false
 
     private let webSearchCoordinator = WebSearchCoordinator()
 
@@ -240,6 +242,44 @@ struct SettingsSheet: View {
                     Text("Web search allows Jubo to fetch current information from the internet. Queries are anonymized before sending.")
                 }
 
+                // MARK: - User Preferences
+                Section {
+                    Button {
+                        showingLocationPicker = true
+                    } label: {
+                        HStack {
+                            Label("Location", systemImage: "location")
+                            Spacer()
+                            Text(userPrefs.location.isEmpty ? "Not Set" : userPrefs.location)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .foregroundColor(.primary)
+
+                    Picker("Temperature", selection: $userPrefs.temperatureUnit) {
+                        ForEach(UserPreferences.TemperatureUnit.allCases, id: \.self) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+
+                    Picker("Time Format", selection: $userPrefs.timeFormat) {
+                        ForEach(UserPreferences.TimeFormat.allCases, id: \.self) { format in
+                            Text(format.rawValue).tag(format)
+                        }
+                    }
+
+                    Picker("Distance", selection: $userPrefs.distanceUnit) {
+                        ForEach(UserPreferences.DistanceUnit.allCases, id: \.self) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+                } header: {
+                    Text("Preferences")
+                } footer: {
+                    Text("Location helps Jubo understand local context (sports teams, weather, news).")
+                }
+
                 Section("About") {
                     LabeledContent("Version", value: "0.2.0")
 
@@ -273,6 +313,9 @@ struct SettingsSheet: View {
                 }
             } message: {
                 Text("Get a free API key at api.search.brave.com (2000 searches/month)")
+            }
+            .sheet(isPresented: $showingLocationPicker) {
+                LocationSearchView(selectedLocation: $userPrefs.location)
             }
         }
     }

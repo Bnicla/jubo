@@ -25,6 +25,15 @@ class ChatViewModel: ObservableObject {
     // Track pending web sources for the current response
     private var pendingWebSources: [String]?
 
+    // Track pending query awaiting search confirmation
+    private var pendingQuery: String?
+
+    // Track expected detail level for current response
+    private var pendingDetailLevel: ResponseDetailLevel = .detailed
+
+    // Memory extraction for learning user preferences
+    private let memoryExtractor = MemoryExtractor()
+
     // MARK: - Computed Properties
 
     var modelState: ModelState {
@@ -51,7 +60,7 @@ class ChatViewModel: ObservableObject {
 
     init(llmService: LLMService, webSearchCoordinator: WebSearchCoordinator? = nil) {
         self.llmService = llmService
-        self.webSearchCoordinator = webSearchCoordinator ?? WebSearchCoordinator()
+        self.webSearchCoordinator = webSearchCoordinator ?? WebSearchCoordinator(llmService: llmService)
 
         // Observe LLM service changes
         llmService.objectWillChange
@@ -107,26 +116,12 @@ class ChatViewModel: ObservableObject {
         inputText = ""
 
         // Add user message
-        var userMessage = Message(role: .user, content: userText)
+        let userMessage = Message(role: .user, content: userText)
         messages.append(userMessage)
-
-        // Start generation state
-        isGenerating = true
-        error = nil
-        pendingWebSources = nil
-
-        // Attempt web search if applicable
-        var searchContext: String? = nil
-        let searchResult = await webSearchCoordinator.attemptSearch(for: userText)
-
-        if searchResult.succeeded {
-            searchContext = searchResult.formattedContext
-            pendingWebSources = searchResult.sources
-            userMessage.usedWebSearch = true
-        }
-
-        // Update the stored user message to reflect web search usage
         saveMessage(userMessage)
+
+        // Extract memories from user message (learns preferences)
+        memoryExtractor.processMessage(userText, memory: UserMemory.shared)
 
         // Update conversation title if this is the first message
         if let conversation = conversation, conversation.messages.count == 1 {
@@ -134,8 +129,55 @@ class ChatViewModel: ObservableObject {
             saveContext()
         }
 
+        // Check if web search is needed - if so, wait for confirmation
+        let needsSearch = await webSearchCoordinator.checkIfSearchNeeded(for: userText)
+
+        if needsSearch {
+            // Store pending query and wait for user confirmation
+            pendingQuery = userText
+            // UI will show confirmation buttons
+            return
+        }
+
+        // No search needed - proceed with generation
+        await generateResponse(searchContext: nil)
+    }
+
+    /// User confirmed web search - perform search and generate
+    func confirmSearch() async {
+        guard let query = pendingQuery else { return }
+        pendingQuery = nil
+
+        // Perform the search
+        let searchResult = await webSearchCoordinator.performConfirmedSearch(for: query)
+
+        var searchContext: String? = nil
+        if searchResult.succeeded {
+            searchContext = searchResult.formattedContext
+            pendingWebSources = searchResult.sources
+            // Map the detail level from coordinator to LLM service
+            pendingDetailLevel = searchResult.detailLevel == .brief ? .brief : .detailed
+            print("[Chat] Using formatted search results as context")
+        }
+
+        await generateResponse(searchContext: searchContext)
+    }
+
+    /// User declined web search - generate offline response
+    func declineSearch() async {
+        pendingQuery = nil
+        webSearchCoordinator.declineSearch()
+        await generateResponse(searchContext: nil)
+    }
+
+    /// Generate LLM response with optional search context
+    private func generateResponse(searchContext: String?) async {
+        // Start generation state
+        isGenerating = true
+        error = nil
+
         // Add placeholder for assistant response
-        var assistantMessage = Message(role: .assistant, content: "")
+        let whaassistantMessage = Message(role: .assistant, content: "")
         messages.append(assistantMessage)
         let assistantIndex = messages.count - 1
 
@@ -143,8 +185,12 @@ class ChatViewModel: ObservableObject {
             // Get the context (all messages except the empty assistant placeholder)
             let context = Array(messages.dropLast())
 
-            // Stream tokens from the LLM (with optional search context)
-            for try await token in llmService.generate(messages: context, searchContext: searchContext) {
+            // Stream tokens from the LLM (with optional search context and detail level)
+            for try await token in llmService.generate(
+                messages: context,
+                searchContext: searchContext,
+                detailLevel: pendingDetailLevel
+            ) {
                 // Append token to the assistant message
                 messages[assistantIndex].content += token
             }
@@ -168,6 +214,8 @@ class ChatViewModel: ObservableObject {
         }
 
         isGenerating = false
+        pendingWebSources = nil
+        pendingDetailLevel = .detailed  // Reset for next message
         webSearchCoordinator.reset()
     }
 

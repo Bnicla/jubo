@@ -1,52 +1,156 @@
 import Foundation
 
+/// Response detail level for formatting and adaptive prompts.
+/// Determines verbosity of search context and response length hints.
+enum ResponseDetailLevel: Equatable {
+    case brief      // Single fact answer (short, direct)
+    case detailed   // Multi-part answer with more context
+}
+
 struct SearchContextFormatter {
 
+    /// Maximum characters for brief search context
+    private static let maxBriefContextLength = 500
+
+    /// Maximum characters for detailed search context (increased for richer results)
+    private static let maxDetailedContextLength = 1200
+
     /// Format search results into a context string for the LLM
-    /// - Parameters:
-    ///   - originalQuery: The user's original question
-    ///   - results: Search results from Brave API
-    ///   - maxResults: Maximum number of results to include (default 3)
-    /// - Returns: Formatted context string to prepend to LLM prompt
+    /// Adjusts detail level based on expected response type
     static func formatForLLM(
         originalQuery: String,
         results: [BraveSearchService.SearchResult],
-        maxResults: Int = 3
+        detailLevel: ResponseDetailLevel = .detailed,
+        maxResults: Int? = nil
     ) -> String {
         guard !results.isEmpty else {
             return originalQuery
         }
 
-        var context = """
-        [WEB SEARCH RESULTS]
-        I searched the web for information related to your question. Here are the relevant results:
+        switch detailLevel {
+        case .brief:
+            return formatBrief(query: originalQuery, results: results)
+        case .detailed:
+            return formatDetailed(query: originalQuery, results: results, maxResults: maxResults ?? 2)
+        }
+    }
 
-        """
+    /// Format for brief single-fact answers
+    private static func formatBrief(
+        query: String,
+        results: [BraveSearchService.SearchResult]
+    ) -> String {
+        // Prefer instant answer if available
+        let bestResult = results.first { $0.isInstantAnswer } ?? results.first
+        guard let result = bestResult else { return query }
 
-        for (index, result) in results.prefix(maxResults).enumerated() {
-            let ageInfo = result.age.map { " (\($0))" } ?? ""
+        let desc = truncate(result.description, to: 150)
+        let title = truncate(result.title, to: 60)
+        let sourceLabel = result.isInstantAnswer ? "[Direct Answer]" : "[Web]"
 
-            context += """
+        let context = """
+            \(sourceLabel) \(title)
+            \(desc)
 
-            [\(index + 1)] \(result.title)\(ageInfo)
-            Source: \(extractDomain(from: result.url))
-            \(result.description)
-
+            Give a short, direct answer: \(query)
             """
+
+        return truncate(context, to: maxBriefContextLength)
+    }
+
+    /// Format for detailed multi-fact answers
+    private static func formatDetailed(
+        query: String,
+        results: [BraveSearchService.SearchResult],
+        maxResults: Int
+    ) -> String {
+        // Categorize results by type for better organization
+        let faqResults = results.filter { $0.answerType == "faq" }
+        let infoboxResults = results.filter { $0.isInstantAnswer && $0.answerType != "faq" }
+        let newsResults = results.filter { $0.answerType == "news" }
+        let locationResults = results.filter { $0.answerType == "location" }
+        let discussionResults = results.filter { $0.answerType == "discussion" }
+        let webResults = results.filter { $0.answerType == "web" }
+
+        var contextParts: [String] = []
+        var resultCount = 0
+        let maxTotal = maxResults + 2  // Allow a few more for variety
+
+        // 1. FAQ - highest priority (direct Q&A)
+        for result in faqResults.prefix(2) where resultCount < maxTotal {
+            let desc = truncate(result.description, to: 350)
+            contextParts.append("[FAQ]\n\(desc)")
+            resultCount += 1
         }
 
-        context += """
+        // 2. Infobox - instant answers (knowledge panels)
+        for result in infoboxResults.prefix(1) where resultCount < maxTotal {
+            let desc = truncate(result.description, to: 300)
+            let title = truncate(result.title, to: 80)
+            contextParts.append("[Direct Answer] \(title)\n\(desc)")
+            resultCount += 1
+        }
 
-        [END SEARCH RESULTS]
+        // 3. News - for current events
+        for result in newsResults.prefix(2) where resultCount < maxTotal {
+            let desc = truncate(result.description, to: 250)
+            let title = truncate(result.title, to: 80)
+            contextParts.append("[News] \(title)\n\(desc)")
+            resultCount += 1
+        }
 
-        Based on the search results above, please answer the user's question.
-        Synthesize the information naturally and cite sources when relevant.
-        If the search results don't fully answer the question, supplement with your knowledge but note what came from the web.
+        // 4. Locations - for local queries
+        for result in locationResults.prefix(2) where resultCount < maxTotal {
+            let desc = truncate(result.description, to: 200)
+            let title = truncate(result.title, to: 80)
+            contextParts.append("[Location] \(title)\n\(desc)")
+            resultCount += 1
+        }
 
-        User's question: \(originalQuery)
-        """
+        // 5. Discussions - community insights
+        for result in discussionResults.prefix(1) where resultCount < maxTotal {
+            let desc = truncate(result.description, to: 200)
+            let title = truncate(result.title, to: 80)
+            contextParts.append("[Discussion] \(title)\n\(desc)")
+            resultCount += 1
+        }
 
-        return context
+        // 6. Web results - general information
+        for result in webResults.prefix(3) where resultCount < maxTotal {
+            let desc = truncate(result.description, to: 250)
+            let title = truncate(result.title, to: 80)
+            contextParts.append("[Web] \(title)\n\(desc)")
+            resultCount += 1
+        }
+
+        let searchContext = contextParts.joined(separator: "\n\n")
+
+        // Build instruction based on result types found
+        let hasDirectAnswers = !faqResults.isEmpty || !infoboxResults.isEmpty
+        let instruction: String
+        if hasDirectAnswers {
+            instruction = "Using the search results above (prioritize FAQ and Direct Answers), provide a helpful response to: \(query)\nInclude specific facts, numbers, dates, and details found in the results."
+        } else {
+            instruction = "Using the search results above, provide a helpful answer to: \(query)\nInclude specific facts, numbers, and details from the results."
+        }
+
+        let context = """
+            [SEARCH RESULTS]
+            \(searchContext)
+            [END RESULTS]
+
+            \(instruction)
+            """
+
+        return truncate(context, to: maxDetailedContextLength)
+    }
+
+    /// Truncate text to a maximum length
+    private static func truncate(_ text: String, to length: Int) -> String {
+        if text.count <= length {
+            return text
+        }
+        return String(text.prefix(length - 3)) + "..."
     }
 
     /// Extract just the domain from a URL for cleaner display

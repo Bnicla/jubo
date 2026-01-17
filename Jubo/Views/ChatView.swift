@@ -64,8 +64,11 @@ struct ChatView: View {
             .onChange(of: viewModel.messages.count) { _, _ in
                 scrollToBottom(proxy: proxy)
             }
-            .onChange(of: viewModel.messages.last?.content) { _, _ in
-                scrollToBottom(proxy: proxy)
+            .onChange(of: viewModel.isGenerating) { _, isGenerating in
+                // Scroll when generation starts/stops instead of every token
+                if !isGenerating {
+                    scrollToBottom(proxy: proxy)
+                }
             }
         }
     }
@@ -197,7 +200,19 @@ struct ChatView: View {
         VStack(spacing: 0) {
             // Web search status indicator
             if viewModel.webSearchState != .idle {
-                WebSearchIndicator(state: viewModel.webSearchState)
+                WebSearchIndicator(
+                    state: viewModel.webSearchState,
+                    onConfirmSearch: {
+                        Task {
+                            await viewModel.confirmSearch()
+                        }
+                    },
+                    onDeclineSearch: {
+                        Task {
+                            await viewModel.declineSearch()
+                        }
+                    }
+                )
             }
 
             HStack(alignment: .bottom, spacing: 12) {
