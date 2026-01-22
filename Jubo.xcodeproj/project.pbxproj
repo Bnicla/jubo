@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -26,6 +26,7 @@
 		9D6536B7F556D345E84B1554 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 290262D06893EC7C8725CDA3 /* SettingsView.swift */; };
 		B04A41E933CB24FB7773B0DA /* ConversationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74376A2AE0A35BA3D060BCF1 /* ConversationListView.swift */; };
 		B09CF49AF9A5098BA3F1A334 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D6ABDB23AC4FD959C23F37 /* ChatViewModel.swift */; };
+		C61B14133E54A0A3E9DD310E /* ESPNService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 358824C43C763B47654665CC /* ESPNService.swift */; };
 		CBCCBE25D481B41CB43F85BF /* CalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F37EFC16FD66EEE98E88366 /* CalendarService.swift */; };
 		D2754BF765CC35BE084A648E /* MemoryExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E13E4334CF6B0A2B14ABA6 /* MemoryExtractor.swift */; };
 		D3EFB9E68869AD5F9DE216D7 /* UserMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29A842C0D1AF8A8FDC79FFD /* UserMemory.swift */; };
@@ -46,7 +47,8 @@
 		165319D3788EF9D805F20FD3 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		290262D06893EC7C8725CDA3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2BA80E41C347597FEDD95E77 /* JuboApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuboApp.swift; sourceTree = "<group>"; };
-		34FD4806632B808FFDB8881F /* Jubo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Jubo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		34FD4806632B808FFDB8881F /* Jubo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jubo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		358824C43C763B47654665CC /* ESPNService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ESPNService.swift; sourceTree = "<group>"; };
 		3AE14E5467E53EBD0720D29F /* QuerySanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuerySanitizer.swift; sourceTree = "<group>"; };
 		3FB16E453EEF1666A9C621BC /* LocationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSearchView.swift; sourceTree = "<group>"; };
 		4C2941981969B5554BFF5569 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -145,6 +147,14 @@
 			path = Calendar;
 			sourceTree = "<group>";
 		};
+		A012ABF83B9A29D031C35930 /* Sports */ = {
+			isa = PBXGroup;
+			children = (
+				358824C43C763B47654665CC /* ESPNService.swift */,
+			);
+			path = Sports;
+			sourceTree = "<group>";
+		};
 		AB27ECE8CDAB305CEC10F9C8 /* Services */ = {
 			isa = PBXGroup;
 			children = (
@@ -152,6 +162,7 @@
 				A0C4F2FDD1F9DA4444C550B4 /* UserPreferences.swift */,
 				9A6F7243A07606B55E16DB2C /* Calendar */,
 				E6CD85070C4B979B9DDD4D3F /* Memory */,
+				A012ABF83B9A29D031C35930 /* Sports */,
 				8648FBCFD54522151F8B9C1C /* Weather */,
 				5A28A7307654106C9776EB2F /* WebSearch */,
 			);
@@ -238,12 +249,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-					02D2838C8C6ED8E0FD857DF0 = {
-						DevelopmentTeam = 8U7A8KJH9P;
-						ProvisioningStyle = Automatic;
-					};
-				};
 			};
 			buildConfigurationList = 762F51882EB047320FD2503F /* Build configuration list for PBXProject "Jubo" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -258,7 +263,6 @@
 			packageReferences = (
 				3DCF7A5118D22704F7535484 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -291,6 +295,7 @@
 				646554240DC02BC141B43540 /* ContentView.swift in Sources */,
 				D8667A80F1D458EC5E7A762F /* Conversation.swift in Sources */,
 				B04A41E933CB24FB7773B0DA /* ConversationListView.swift in Sources */,
+				C61B14133E54A0A3E9DD310E /* ESPNService.swift in Sources */,
 				0AFA0E65B87EF6711AA66C87 /* IntentDetector.swift in Sources */,
 				866C748E600BB498C95CB05A /* JuboApp.swift in Sources */,
 				222F8A10A5DA8A7EB09C4AD3 /* LLMService.swift in Sources */,
@@ -378,7 +383,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Jubo/Jubo.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8U7A8KJH9P;
 				ENABLE_PREVIEWS = YES;
@@ -398,6 +403,7 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jubo.app;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -409,7 +415,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Jubo/Jubo.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8U7A8KJH9P;
 				ENABLE_PREVIEWS = YES;
@@ -429,6 +435,7 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jubo.app;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				TARGETED_DEVICE_FAMILY = "1,2";

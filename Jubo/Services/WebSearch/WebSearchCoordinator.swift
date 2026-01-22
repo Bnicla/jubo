@@ -37,6 +37,7 @@ class WebSearchCoordinator: ObservableObject {
         case weather
         case calendar
         case reminders
+        case sports
     }
 
     /// Current state of the search/fetch operation.
@@ -50,10 +51,12 @@ class WebSearchCoordinator: ObservableObject {
         case fetchingWeather(location: String)
         case fetchingCalendar
         case fetchingReminders
+        case fetchingSports(league: String)
         case complete(resultCount: Int)
         case weatherComplete
         case calendarComplete(eventCount: Int)
         case remindersComplete(reminderCount: Int)
+        case sportsComplete(gameCount: Int)
         case failed(reason: String)
         case skipped(reason: String)
     }
@@ -92,6 +95,7 @@ class WebSearchCoordinator: ObservableObject {
     private let searchService = BraveSearchService()
     private let weatherService = WeatherKitService()
     private let calendarService = CalendarService()
+    private let espnService = ESPNService()
     private let usageTracker = SearchUsageTracker()
     private weak var llmService: LLMService?
 
@@ -189,6 +193,19 @@ class WebSearchCoordinator: ObservableObject {
             }
         }
 
+        // Sports queries - route to ESPN (no API key needed)
+        if detectedQueryType == .sports {
+            // Check if we can detect the specific league
+            if let league = await espnService.detectLeague(from: query) {
+                print("[Sports] CONFIRM: Requesting confirmation for \(league.displayName) scores")
+                state = .awaitingConfirmation(query: league.displayName, type: .sports)
+                return true
+            } else {
+                print("[Sports] Could not detect league, will use web search")
+                // Fall through to web search
+            }
+        }
+
         // For non-specialized queries, check if web search is enabled
         guard await usageTracker.isWebSearchEnabled else {
             print("[WebSearch] SKIP: Web search disabled")
@@ -273,7 +290,7 @@ class WebSearchCoordinator: ObservableObject {
     /// - `.weather` → WeatherKit (no API quota used)
     /// - `.calendar` → EventKit for schedule data
     /// - `.reminders` → EventKit for reminders
-    /// - `.sports` → Sports API (future)
+    /// - `.sports` → ESPN API for live scores
     /// - `.general` → Brave Search API
     ///
     /// - Parameter query: The original user query
@@ -292,6 +309,11 @@ class WebSearchCoordinator: ObservableObject {
         // Route reminder queries to EventKit
         if detectedQueryType == .reminders {
             return await performRemindersFetch(for: query)
+        }
+
+        // Route sports queries to ESPN
+        if detectedQueryType == .sports {
+            return await performSportsFetch(for: query)
         }
 
         // Otherwise, perform web search
@@ -355,17 +377,59 @@ class WebSearchCoordinator: ObservableObject {
             )
 
         } catch {
-            print("[Weather] Error: \(error.localizedDescription)")
-            state = .failed(reason: error.localizedDescription)
+            print("[Weather] WeatherKit failed: \(error.localizedDescription)")
+            print("[Weather] Falling back to web search...")
+
+            // Fall back to web search for weather when WeatherKit fails
+            // Construct a weather-specific search query
+            let weatherQuery = "weather forecast \(loc)"
+            return await performWebSearch(for: weatherQuery)
+        }
+    }
+
+    /// Fetch live sports scores using ESPN API.
+    ///
+    /// This method:
+    /// 1. Detects the league from the query (Champions League, NBA, etc.)
+    /// 2. Fetches live scores from ESPN's public API
+    /// 3. Formats results for LLM context injection
+    /// 4. Falls back to web search if league not detected
+    ///
+    /// - Parameter query: The sports-related query
+    /// - Returns: SearchAttemptResult with sports context or error
+    private func performSportsFetch(for query: String) async -> SearchAttemptResult {
+        // Try to detect the league from the query
+        guard let league = await espnService.detectLeague(from: query) else {
+            print("[Sports] Could not detect specific league, falling back to web search")
+            return await performWebSearch(for: query)
+        }
+
+        state = .fetchingSports(league: league.displayName)
+        print("[Sports] Fetching \(league.displayName) scores")
+
+        do {
+            let result = try await espnService.fetchScores(for: league)
+            let context = result.formatForLLM(query: query)
+
+            state = .sportsComplete(gameCount: result.games.count)
+            print("[Sports] Context ready: \(result.games.count) games")
+
             return SearchAttemptResult(
                 originalQuery: query,
-                sanitizedQuery: loc,
+                sanitizedQuery: league.displayName,
                 searchResults: nil,
-                formattedContext: nil,
-                sources: nil,
-                error: .apiError(error.localizedDescription),
+                formattedContext: context,
+                sources: ["ESPN"],
+                error: nil,
                 detailLevel: expectedDetailLevel
             )
+
+        } catch {
+            print("[Sports] ESPN failed: \(error.localizedDescription)")
+            print("[Sports] Falling back to web search...")
+
+            // Fall back to web search if ESPN fails
+            return await performWebSearch(for: query)
         }
     }
 

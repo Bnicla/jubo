@@ -62,6 +62,14 @@ struct WebSearchIndicator: View {
                     showProgress: true
                 )
 
+            case .fetchingSports(let league):
+                statusRow(
+                    icon: "sportscourt",
+                    iconColor: .blue,
+                    text: "Getting \(league) scores...",
+                    showProgress: true
+                )
+
             case .complete(let count):
                 statusRow(
                     icon: "checkmark.circle.fill",
@@ -91,6 +99,14 @@ struct WebSearchIndicator: View {
                     icon: "checkmark.circle.fill",
                     iconColor: .green,
                     text: "\(count) reminder\(count == 1 ? "" : "s") found",
+                    showProgress: false
+                )
+
+            case .sportsComplete(let count):
+                statusRow(
+                    icon: "checkmark.circle.fill",
+                    iconColor: .green,
+                    text: "\(count) game\(count == 1 ? "" : "s") found",
                     showProgress: false
                 )
 
@@ -169,6 +185,8 @@ struct WebSearchIndicator: View {
             return ("calendar", "Check calendar for \(query)?", "Check Calendar")
         case .reminders:
             return ("checklist", "View pending reminders?", "View Reminders")
+        case .sports:
+            return ("sportscourt", "Get \(query) scores?", "Get Scores")
         }
     }
 

@@ -116,89 +116,10 @@ class UserPreferences: ObservableObject {
         !location.isEmpty || !customContext.isEmpty
     }
 
-    /// Generate search query enhancement based on preferences
-    /// Converts natural language questions to search-friendly format
+    /// Pass query through - LLM has location context in system prompt
     func enhanceSearchQuery(_ query: String) -> String {
-        var enhanced = query
-
-        // Step 1: Remove conversational prefixes that don't help search
-        enhanced = removeConversationalPrefixes(enhanced)
-
-        // Step 2: Add location context if query seems location-relevant
-        enhanced = addLocationContextIfNeeded(enhanced)
-
-        if enhanced != query {
-            print("[QueryEnhance] '\(query)' → '\(enhanced)'")
-        }
-
-        return enhanced
-    }
-
-    /// Remove prefixes that are conversational but don't help search engines
-    private func removeConversationalPrefixes(_ query: String) -> String {
-        let prefixes = [
-            "can you tell me",
-            "could you tell me",
-            "please tell me",
-            "i want to know",
-            "i'd like to know",
-            "what will be the",
-            "what is the",
-            "what are the",
-            "what's the",
-            "tell me about the",
-            "tell me the",
-            "show me the",
-            "find me the",
-            "search for the",
-            "look up the"
-        ]
-
-        var result = query
-        let lowerQuery = query.lowercased()
-
-        for prefix in prefixes {
-            if lowerQuery.hasPrefix(prefix) {
-                result = String(query.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces)
-                break
-            }
-        }
-
-        return result
-    }
-
-    /// Add location context to queries that would benefit from it
-    private func addLocationContextIfNeeded(_ query: String) -> String {
-        guard !location.isEmpty else { return query }
-
-        let cityName = (location.components(separatedBy: ",").first ?? location)
-            .trimmingCharacters(in: .whitespaces)
-        let queryLower = query.lowercased()
-
-        // Skip if location already mentioned
-        if queryLower.contains(cityName.lowercased()) {
-            return query
-        }
-
-        // Keywords that benefit from location context
-        let locationKeywords = [
-            // Weather & environment
-            "weather", "temperature", "forecast", "rain", "snow", "humidity",
-            // Local info
-            "near me", "nearby", "local", "closest",
-            // Sports (often have city-based teams)
-            "game", "match", "score", "standings", "schedule", "team",
-            // Local businesses
-            "restaurant", "store", "shop", "open", "hours",
-            // Events
-            "events", "happening", "concert", "show"
-        ]
-
-        // Check if query would benefit from location
-        if locationKeywords.contains(where: { queryLower.contains($0) }) {
-            return "\(cityName) \(query)"
-        }
-
+        // No preprocessing - let the search engine and LLM handle natural language
+        // User's location is already in the LLM's system prompt for context
         return query
     }
 }

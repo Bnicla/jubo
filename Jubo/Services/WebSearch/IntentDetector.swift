@@ -358,11 +358,12 @@ struct IntentDetector {
         let lowercased = query.lowercased()
 
         // Regex patterns to match various "weather in [location]" formats
+        // Use \b word boundaries to prevent matching within other words (e.g., "at" in "what")
         let patterns = [
-            "weather (?:in|for|at) ([\\w\\s,]+?)(?:\\?|$|\\.|!|this|today|tomorrow|weekend|week|right|now|currently)",
-            "(?:in|for|at) ([\\w\\s,]+?) weather",
-            "([\\w\\s,]+?) weather (?:today|tomorrow|this|forecast|right|now)",
-            "what(?:'s| is) the weather (?:in|for|at|like in) ([\\w\\s,]+?)(?:\\?|$|\\.|!|right|now|today|tomorrow)"
+            "weather\\s+(?:in|for|at)\\s+([\\w\\s,]+?)(?:\\?|$|\\.|!|this|today|tomorrow|tonight|weekend|week|right|now|currently)",
+            "\\b(?:in|for|at)\\s+([\\w\\s,]+?)\\s+weather\\b",
+            "\\b([\\w\\s,]+?)\\s+weather\\s+(?:today|tomorrow|tonight|this|forecast|right|now)\\b",
+            "what(?:'s|\\s+is)\\s+the\\s+weather\\s+(?:in|for|at|like\\s+in)\\s+([\\w\\s,]+?)(?:\\?|$|\\.|!|right|now|today|tomorrow|tonight)"
         ]
 
         for pattern in patterns {
@@ -374,13 +375,26 @@ struct IntentDetector {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                     .trimmingCharacters(in: CharacterSet(charactersIn: "?.,!"))
 
-                // Filter out time-related words that might be captured
-                let timeWords = ["today", "tomorrow", "weekend", "week", "now", "right now", "right", "this", "the", "like", "currently", "current"]
-                for word in timeWords {
-                    location = location.replacingOccurrences(of: word, with: "").trimmingCharacters(in: .whitespaces)
+                // Filter out time-related words and common stopwords that might be captured
+                let filterWords = [
+                    // Time words
+                    "today", "tomorrow", "tonight", "weekend", "week", "now", "right now", "right",
+                    "this", "currently", "current", "morning", "afternoon", "evening", "night",
+                    // Common stopwords that aren't locations
+                    "the", "like", "is", "it", "be", "a", "an", "on", "at", "to", "for", "in",
+                    "what", "whats", "how", "does", "will", "would", "could", "should"
+                ]
+                for word in filterWords {
+                    // Use word boundary replacement to avoid partial matches
+                    location = location.replacingOccurrences(
+                        of: "\\b\(word)\\b",
+                        with: "",
+                        options: [.regularExpression, .caseInsensitive]
+                    ).trimmingCharacters(in: .whitespaces)
                 }
 
-                if location.count > 1 {
+                // Require at least 2 characters for a valid location
+                if location.count >= 2 {
                     return location
                 }
             }

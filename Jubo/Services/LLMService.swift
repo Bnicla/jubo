@@ -168,6 +168,11 @@ class LLMService: ObservableObject {
         // If using web search, reset session to free GPU memory from accumulated history
         // This prevents memory overflow when adding search context
         if searchContext != nil {
+            // Sync GPU and wait briefly before creating new session
+            // This ensures classifier sessions have fully released GPU resources
+            Stream.gpu.synchronize()
+            try? await Task.sleep(for: .milliseconds(100))
+
             // Adjust maxTokens based on expected detail level
             let maxTokens: Int
             switch detailLevel {
@@ -180,7 +185,8 @@ class LLMService: ObservableObject {
             // Build prompt with detail-level specific instructions
             let searchPrompt = promptBuilder.buildSystemPrompt(detailLevel: detailLevel)
 
-            session = ChatSession(
+            // Create fresh session and update instance variable
+            let newSession = ChatSession(
                 container,
                 instructions: searchPrompt,
                 generateParameters: GenerateParameters(
@@ -189,6 +195,8 @@ class LLMService: ObservableObject {
                     topP: 0.95
                 )
             )
+            session = newSession
+            chatSession = newSession  // Update instance variable too
             print("[LLM] Web search response - maxTokens: \(maxTokens) (\(detailLevel == .brief ? "brief" : "detailed"))")
         }
 
@@ -306,8 +314,8 @@ class LLMService: ObservableObject {
         let needsSearch = response.uppercased().contains("YES")
         print("[LLM] Intent classification: '\(query)' → \(needsSearch ? "NEEDS SEARCH" : "NO SEARCH")")
 
-        // Force GPU memory cleanup before response generation
-        await cleanupGPUMemory()
+        // Note: Don't cleanup here - classifyResponseDetail() may run immediately after
+        // Cleanup happens after all classification is complete
 
         return needsSearch
     }
@@ -362,18 +370,17 @@ class LLMService: ObservableObject {
         return isBrief ? .brief : .detailed
     }
 
-    /// Force GPU synchronization and clear cached buffers
+    /// Force GPU synchronization (safe cleanup that doesn't invalidate model data)
     private func cleanupGPUMemory() async {
         // Synchronize forces all pending GPU operations to complete
         Stream.gpu.synchronize()
 
-        // Clear the Metal buffer cache to free memory
-        Memory.clearCache()
-
-        // Brief pause to allow memory reclamation
-        try? await Task.sleep(for: .milliseconds(50))
+        // Note: We intentionally do NOT call Memory.clearCache() here.
+        // Clearing the cache while the model is active can cause GPU page faults
+        // because model weights and intermediate tensors may still be referenced.
+        // The cache will naturally be managed by MLX's memory allocator.
 
         let snapshot = Memory.snapshot()
-        print("[LLM] GPU memory cleaned - Active: \(snapshot.activeMemory / 1024 / 1024)MB, Cache: \(snapshot.cacheMemory / 1024 / 1024)MB")
+        print("[LLM] GPU sync complete - Active: \(snapshot.activeMemory / 1024 / 1024)MB, Cache: \(snapshot.cacheMemory / 1024 / 1024)MB")
     }
 }

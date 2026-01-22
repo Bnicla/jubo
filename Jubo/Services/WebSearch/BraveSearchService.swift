@@ -253,14 +253,22 @@ actor BraveSearchService {
         static func forQuery(_ query: String) -> Freshness {
             let lower = query.lowercased()
 
-            // Breaking news / very recent events need past day
-            let urgentKeywords = ["breaking", "just happened", "right now", "today's", "this morning", "tonight", "live"]
+            // Sports scores, live events, breaking news need past day
+            let urgentKeywords = [
+                // Live/breaking
+                "breaking", "just happened", "right now", "this morning", "tonight", "live",
+                // Sports (scores change hourly)
+                "score", "result", "results", "game today", "match today", "who won", "final score",
+                "champions league", "premier league", "nba", "nfl", "mlb", "nhl",
+                // Time-sensitive
+                "today"
+            ]
             if urgentKeywords.contains(where: { lower.contains($0) }) {
                 return .pastDay
             }
 
-            // Weather, sports scores, current events need past week
-            let recentKeywords = ["weather", "forecast", "score", "game", "match", "news", "latest", "current", "today", "tomorrow", "this week"]
+            // Weather, current events need past week
+            let recentKeywords = ["weather", "forecast", "game", "match", "news", "latest", "current", "tomorrow", "this week"]
             if recentKeywords.contains(where: { lower.contains($0) }) {
                 return .pastWeek
             }
