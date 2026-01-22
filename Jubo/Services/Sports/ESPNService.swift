@@ -1,7 +1,19 @@
+//
+//  ESPNService.swift
+//  Jubo
+//
+//  Service for fetching live sports scores from ESPN's public API.
+//  No API key required - uses ESPN's free public endpoints.
+//
+//  Supported leagues:
+//  - Soccer: Champions League, Europa League, Premier League, La Liga, etc.
+//  - American: NFL, NBA, MLB, NHL, College Football/Basketball
+//
+
 import Foundation
 
-/// Service for fetching live sports scores from ESPN's public API
-/// No API key required for basic scoreboard data
+/// Service for fetching live sports scores from ESPN's public API.
+/// No API key required for basic scoreboard data.
 actor ESPNService {
 
     // MARK: - Types

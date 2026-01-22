@@ -1,3 +1,12 @@
+//
+//  ChatViewModel.swift
+//  Jubo
+//
+//  Main view model for chat functionality.
+//  Orchestrates message flow, LLM generation, web search coordination,
+//  and memory extraction. Bridges the UI with all backend services.
+//
+
 import Foundation
 import SwiftData
 import Combine

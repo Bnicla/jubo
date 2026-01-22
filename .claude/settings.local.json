@@ -21,7 +21,15 @@
       "Bash(xargs cat:*)",
       "WebFetch(domain:api.search.brave.com)",
       "WebFetch(domain:api-dashboard.search.brave.com)",
-      "WebFetch(domain:simonwillison.net)"
+      "WebFetch(domain:simonwillison.net)",
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(xargs:*)",
+      "Bash(codesign:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git push)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -1,3 +1,16 @@
+//
+//  LLMService.swift
+//  Jubo
+//
+//  Core LLM inference service using Apple's MLX framework.
+//  Handles model loading, token streaming, and intent classification.
+//
+//  Supported models (tried in order with automatic fallback):
+//  - SmolLM3 3B (4-bit) - Best quality/speed balance
+//  - Qwen2.5 3B (4-bit) - Good alternative
+//  - Llama 3.2 1B (4-bit) - Fastest, smallest
+//
+
 import Foundation
 import MLX
 import MLXLLM
