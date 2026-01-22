@@ -40,7 +40,7 @@ A native iOS/macOS AI assistant that runs small language models entirely on-devi
 ### 1. Clone & Generate Project
 
 ```bash
-git clone https://github.com/yourusername/jubo.git
+git clone https://github.com/Bnicla/jubo.git
 cd jubo
 
 # Install XcodeGen if needed
