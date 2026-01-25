@@ -110,6 +110,22 @@ struct WebSearchIndicator: View {
                     showProgress: false
                 )
 
+            case .creatingReminder:
+                statusRow(
+                    icon: "checklist",
+                    iconColor: .blue,
+                    text: "Creating reminder...",
+                    showProgress: true
+                )
+
+            case .reminderCreated:
+                statusRow(
+                    icon: "checkmark.circle.fill",
+                    iconColor: .green,
+                    text: "Reminder created",
+                    showProgress: false
+                )
+
             case .failed(let reason):
                 statusRow(
                     icon: "exclamationmark.triangle.fill",
@@ -181,10 +197,25 @@ struct WebSearchIndicator: View {
             return ("globe", "Search web for: \(truncate(query, to: 35))?", "Search Web")
         case .weather:
             return ("cloud.sun", "Get weather for \(query.capitalized)?", "Get Weather")
-        case .calendar:
-            return ("calendar", "Check calendar for \(query)?", "Check Calendar")
-        case .reminders:
-            return ("checklist", "View pending reminders?", "View Reminders")
+        case .calendar(let hasPermission):
+            if hasPermission {
+                return ("calendar", "Check calendar for \(query)?", "Check Calendar")
+            } else {
+                return ("calendar.badge.plus", "Allow calendar access for \(query)?", "Allow Access")
+            }
+        case .reminders(let hasPermission):
+            if hasPermission {
+                return ("checklist", "View pending reminders?", "View Reminders")
+            } else {
+                return ("checklist.unchecked", "Allow reminders access?", "Allow Access")
+            }
+        case .reminderCreation(let title, let timeHint):
+            let displayTitle = truncate(title, to: 25)
+            if let hint = timeHint {
+                return ("plus.circle", "Create reminder: \"\(displayTitle)\" (\(hint))?", "Create")
+            } else {
+                return ("plus.circle", "Create reminder: \"\(displayTitle)\"?", "Create")
+            }
         case .sports:
             return ("sportscourt", "Get \(query) scores?", "Get Scores")
         }

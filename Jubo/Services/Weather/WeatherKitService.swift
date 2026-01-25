@@ -127,7 +127,17 @@ actor WeatherKitService {
             case .locationNotFound:
                 return "Location not found"
             case .serviceUnavailable:
-                return "Weather service unavailable"
+                return "Weather service unavailable. Please check that WeatherKit is enabled in your Apple Developer account."
+            }
+        }
+
+        /// Check if this error should trigger a fallback to web search
+        var shouldFallbackToWebSearch: Bool {
+            switch self {
+            case .serviceUnavailable, .weatherFetchFailed:
+                return true
+            case .geocodingFailed, .locationNotFound:
+                return false
             }
         }
     }
@@ -161,12 +171,31 @@ actor WeatherKitService {
 
     // MARK: - Public API
 
+    /// Check if WeatherKit service is available
+    /// - Returns: true if WeatherKit is properly configured and available
+    func isAvailable() async -> Bool {
+        do {
+            // Try to get attribution - this will fail if WeatherKit isn't configured
+            _ = try await weatherService.attribution
+            return true
+        } catch {
+            print("[Weather] WeatherKit not available: \(error.localizedDescription)")
+            return false
+        }
+    }
+
     /// Fetch weather for a location string (city name, address, etc.)
     /// - Parameters:
     ///   - locationString: City name or address to fetch weather for
     ///   - useCelsius: Whether to format temperatures in Celsius (true) or Fahrenheit (false)
     func fetchWeather(for locationString: String, useCelsius: Bool = true) async throws -> WeatherData {
         print("[Weather] Fetching weather for: \(locationString) (useCelsius: \(useCelsius))")
+
+        // Check if WeatherKit is available before proceeding
+        guard await isAvailable() else {
+            print("[Weather] WeatherKit service not available")
+            throw WeatherError.serviceUnavailable
+        }
 
         // Geocode the location string to coordinates
         let location = try await geocode(locationString)
@@ -178,6 +207,14 @@ actor WeatherKitService {
             weather = try await weatherService.weather(for: location)
         } catch {
             print("[Weather] WeatherKit error: \(error.localizedDescription)")
+            // Check if this is an authorization/configuration error
+            let nsError = error as NSError
+            if nsError.domain == "WeatherDaemon.WDSJWTAuthenticatorServiceListener.Errors" ||
+               nsError.code == 2 || // Common authorization error code
+               error.localizedDescription.lowercased().contains("unauthorized") ||
+               error.localizedDescription.lowercased().contains("not authorized") {
+                throw WeatherError.serviceUnavailable
+            }
             throw WeatherError.weatherFetchFailed(error.localizedDescription)
         }
 

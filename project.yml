@@ -31,7 +31,7 @@ targets:
         com.apple.developer.weatherkit: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.jubo.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.jubo.ai
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_GENERATION_MODE: GeneratedFile

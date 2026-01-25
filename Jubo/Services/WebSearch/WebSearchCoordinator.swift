@@ -35,8 +35,9 @@ class WebSearchCoordinator: ObservableObject {
     enum ConfirmationType: Equatable {
         case webSearch
         case weather
-        case calendar
-        case reminders
+        case calendar(hasPermission: Bool)
+        case reminders(hasPermission: Bool)
+        case reminderCreation(title: String, timeHint: String?)
         case sports
     }
 
@@ -51,11 +52,13 @@ class WebSearchCoordinator: ObservableObject {
         case fetchingWeather(location: String)
         case fetchingCalendar
         case fetchingReminders
+        case creatingReminder
         case fetchingSports(league: String)
         case complete(resultCount: Int)
         case weatherComplete
         case calendarComplete(eventCount: Int)
         case remindersComplete(reminderCount: Int)
+        case reminderCreated
         case sportsComplete(gameCount: Int)
         case failed(reason: String)
         case skipped(reason: String)
@@ -95,7 +98,7 @@ class WebSearchCoordinator: ObservableObject {
     private let searchService = BraveSearchService()
     private let weatherService = WeatherKitService()
     private let calendarService = CalendarService()
-    private let espnService = ESPNService()
+    private let sportsCoordinator: SportsCoordinator
     private let usageTracker = SearchUsageTracker()
     private weak var llmService: LLMService?
 
@@ -108,10 +111,18 @@ class WebSearchCoordinator: ObservableObject {
     /// Detected calendar time range (for calendar queries)
     private(set) var detectedTimeRange: CalendarTimeRange = .today
 
+    /// Whether the current reminder query is for creation (vs viewing)
+    private(set) var isReminderCreation: Bool = false
+
+    /// Details for reminder creation (title, time hint)
+    private(set) var reminderCreationDetails: (title: String, timeHint: String?) = ("", nil)
+
     // MARK: - Initialization
 
     init(llmService: LLMService? = nil) {
         self.llmService = llmService
+        // Initialize sports coordinator with ESPN as the primary provider
+        self.sportsCoordinator = SportsCoordinator(providers: [ESPNService()])
     }
 
     // MARK: - Public API
@@ -158,15 +169,28 @@ class WebSearchCoordinator: ObservableObject {
         if detectedQueryType == .calendar {
             detectedTimeRange = IntentDetector.extractCalendarTimeRange(from: query)
             let timeDesc = timeRangeDescription(detectedTimeRange)
-            print("[Calendar] CONFIRM: Requesting confirmation for calendar (\(timeDesc))")
-            state = .awaitingConfirmation(query: timeDesc, type: .calendar)
+            let hasAccess = calendarService.hasCalendarAccess
+            print("[Calendar] CONFIRM: Requesting confirmation for calendar (\(timeDesc)), hasAccess: \(hasAccess)")
+            state = .awaitingConfirmation(query: timeDesc, type: .calendar(hasPermission: hasAccess))
             return true
         }
 
         // Reminder queries - route to EventKit
         if detectedQueryType == .reminders {
-            print("[Reminders] CONFIRM: Requesting confirmation for reminders")
-            state = .awaitingConfirmation(query: query, type: .reminders)
+            // Check if this is a creation request vs viewing
+            if IntentDetector.isReminderCreationQuery(query) {
+                let details = IntentDetector.extractReminderDetails(from: query)
+                isReminderCreation = true
+                reminderCreationDetails = details
+                print("[Reminders] CONFIRM: Requesting confirmation for reminder creation: \(details.title)")
+                state = .awaitingConfirmation(query: query, type: .reminderCreation(title: details.title, timeHint: details.timeHint))
+                return true
+            }
+
+            isReminderCreation = false
+            let hasAccess = calendarService.hasReminderAccess
+            print("[Reminders] CONFIRM: Requesting confirmation for reminders, hasAccess: \(hasAccess)")
+            state = .awaitingConfirmation(query: query, type: .reminders(hasPermission: hasAccess))
             return true
         }
 
@@ -178,7 +202,8 @@ class WebSearchCoordinator: ObservableObject {
                 // Use user's configured location as fallback
                 let userLocation = UserPreferences.shared.location
                 if !userLocation.isEmpty {
-                    location = userLocation.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces)
+                    // Keep full location (e.g., "Lincoln, MA") for accurate geocoding and web search fallback
+                    location = userLocation.trimmingCharacters(in: .whitespaces)
                     print("[Weather] Using user preference location: \(location ?? "nil")")
                 }
             }
@@ -193,10 +218,10 @@ class WebSearchCoordinator: ObservableObject {
             }
         }
 
-        // Sports queries - route to ESPN (no API key needed)
+        // Sports queries - route to SportsCoordinator
         if detectedQueryType == .sports {
             // Check if we can detect the specific league
-            if let league = await espnService.detectLeague(from: query) {
+            if let league = await sportsCoordinator.detectLeague(from: query) {
                 print("[Sports] CONFIRM: Requesting confirmation for \(league.displayName) scores")
                 state = .awaitingConfirmation(query: league.displayName, type: .sports)
                 return true
@@ -308,6 +333,9 @@ class WebSearchCoordinator: ObservableObject {
 
         // Route reminder queries to EventKit
         if detectedQueryType == .reminders {
+            if isReminderCreation {
+                return await performReminderCreation(for: query)
+            }
             return await performRemindersFetch(for: query)
         }
 
@@ -391,15 +419,15 @@ class WebSearchCoordinator: ObservableObject {
     ///
     /// This method:
     /// 1. Detects the league from the query (Champions League, NBA, etc.)
-    /// 2. Fetches live scores from ESPN's public API
-    /// 3. Formats results for LLM context injection
-    /// 4. Falls back to web search if league not detected
+    /// 2. Fetches live scores via SportsCoordinator (tries providers in priority order)
+    /// 3. Formats results for LLM context injection using SportsFormatter
+    /// 4. Falls back to web search if league not detected or all providers fail
     ///
     /// - Parameter query: The sports-related query
     /// - Returns: SearchAttemptResult with sports context or error
     private func performSportsFetch(for query: String) async -> SearchAttemptResult {
         // Try to detect the league from the query
-        guard let league = await espnService.detectLeague(from: query) else {
+        guard let league = await sportsCoordinator.detectLeague(from: query) else {
             print("[Sports] Could not detect specific league, falling back to web search")
             return await performWebSearch(for: query)
         }
@@ -408,27 +436,27 @@ class WebSearchCoordinator: ObservableObject {
         print("[Sports] Fetching \(league.displayName) scores")
 
         do {
-            let result = try await espnService.fetchScores(for: league)
-            let context = result.formatForLLM(query: query)
+            let result = try await sportsCoordinator.fetchScores(for: league)
+            let context = SportsFormatter.formatForLLM(result: result, query: query)
 
             state = .sportsComplete(gameCount: result.games.count)
-            print("[Sports] Context ready: \(result.games.count) games")
+            print("[Sports] Context ready: \(result.games.count) games from \(result.source)")
 
             return SearchAttemptResult(
                 originalQuery: query,
                 sanitizedQuery: league.displayName,
                 searchResults: nil,
                 formattedContext: context,
-                sources: ["ESPN"],
+                sources: [result.source],
                 error: nil,
                 detailLevel: expectedDetailLevel
             )
 
         } catch {
-            print("[Sports] ESPN failed: \(error.localizedDescription)")
+            print("[Sports] All providers failed: \(error.localizedDescription)")
             print("[Sports] Falling back to web search...")
 
-            // Fall back to web search if ESPN fails
+            // Fall back to web search if all providers fail
             return await performWebSearch(for: query)
         }
     }
@@ -481,8 +509,8 @@ class WebSearchCoordinator: ObservableObject {
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             dateDescription = formatter.string(from: date)
-            // For now, fetch today's events for specific dates
-            events = await calendarService.fetchTodayEvents()
+            // Fetch events for the specific requested date
+            events = await calendarService.fetchEventsForDate(date)
         }
 
         // Format for LLM
@@ -557,6 +585,153 @@ class WebSearchCoordinator: ObservableObject {
             error: nil,
             detailLevel: expectedDetailLevel
         )
+    }
+
+    /// Create a new reminder using EventKit.
+    ///
+    /// This method:
+    /// 1. Requests reminder access if needed
+    /// 2. Parses the time hint to a due date
+    /// 3. Creates the reminder
+    /// 4. Returns confirmation context for LLM
+    ///
+    /// - Parameter query: The reminder creation query
+    /// - Returns: SearchAttemptResult with creation confirmation or error
+    private func performReminderCreation(for query: String) async -> SearchAttemptResult {
+        state = .creatingReminder
+        print("[Reminders] Creating reminder: \(reminderCreationDetails.title)")
+
+        // Request access if needed
+        if !calendarService.hasReminderAccess {
+            let granted = await calendarService.requestReminderAccess()
+            if !granted {
+                state = .failed(reason: "Reminders access denied")
+                return SearchAttemptResult(
+                    originalQuery: query,
+                    sanitizedQuery: nil,
+                    searchResults: nil,
+                    formattedContext: nil,
+                    sources: nil,
+                    error: .apiError("Reminders access was denied. Please enable in Settings."),
+                    detailLevel: expectedDetailLevel
+                )
+            }
+        }
+
+        // Parse time hint to due date
+        let dueDate = parseTimeHint(reminderCreationDetails.timeHint)
+
+        // Create the reminder
+        let success = await calendarService.createReminder(
+            title: reminderCreationDetails.title,
+            dueDate: dueDate
+        )
+
+        if success {
+            state = .reminderCreated
+
+            // Format due date for display
+            let dueDateDisplay: String
+            if let date = dueDate {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                dueDateDisplay = formatter.string(from: date)
+            } else {
+                dueDateDisplay = "No specific time"
+            }
+
+            let context = """
+                [REMINDER CREATED]
+                Title: \(reminderCreationDetails.title)
+                Due: \(dueDateDisplay)
+
+                Confirm to the user that their reminder has been created successfully.
+                """
+
+            print("[Reminders] Created reminder: \(reminderCreationDetails.title)")
+
+            return SearchAttemptResult(
+                originalQuery: query,
+                sanitizedQuery: reminderCreationDetails.title,
+                searchResults: nil,
+                formattedContext: context,
+                sources: ["Reminders"],
+                error: nil,
+                detailLevel: .brief
+            )
+        } else {
+            state = .failed(reason: "Failed to create reminder")
+            return SearchAttemptResult(
+                originalQuery: query,
+                sanitizedQuery: nil,
+                searchResults: nil,
+                formattedContext: nil,
+                sources: nil,
+                error: .apiError("Failed to create reminder. Please try again."),
+                detailLevel: expectedDetailLevel
+            )
+        }
+    }
+
+    /// Parse a time hint string into a Date.
+    ///
+    /// Supports common phrases:
+    /// - "tomorrow" → tomorrow at start of day
+    /// - "tonight", "this evening" → today at 6 PM
+    /// - "next week" → 7 days from now
+    /// - "in X hours" → X hours from now
+    ///
+    /// - Parameter hint: The time hint string from user query
+    /// - Returns: Parsed Date, or nil if not parseable
+    private func parseTimeHint(_ hint: String?) -> Date? {
+        guard let hint = hint?.lowercased().trimmingCharacters(in: .whitespaces) else {
+            return nil
+        }
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        switch hint {
+        case "tomorrow":
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
+            // Set to 9 AM tomorrow
+            return calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow ?? now)
+
+        case "tonight", "this evening":
+            return calendar.date(bySettingHour: 18, minute: 0, second: 0, of: now)
+
+        case "this morning":
+            return calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now)
+
+        case "this afternoon":
+            return calendar.date(bySettingHour: 14, minute: 0, second: 0, of: now)
+
+        case "next week":
+            let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: calendar.startOfDay(for: now))
+            return calendar.date(bySettingHour: 9, minute: 0, second: 0, of: nextWeek ?? now)
+
+        default:
+            // Try to parse "in X hours" or "in X hour"
+            if hint.contains("hour") {
+                let digits = hint.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                    .joined()
+                if let hours = Int(digits), hours > 0 && hours <= 24 {
+                    return calendar.date(byAdding: .hour, value: hours, to: now)
+                }
+            }
+
+            // Try to parse "in X minutes" or "in X minute"
+            if hint.contains("minute") {
+                let digits = hint.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                    .joined()
+                if let minutes = Int(digits), minutes > 0 && minutes <= 1440 {
+                    return calendar.date(byAdding: .minute, value: minutes, to: now)
+                }
+            }
+
+            return nil
+        }
     }
 
     /// Perform web search using Brave Search API.
@@ -679,6 +854,8 @@ class WebSearchCoordinator: ObservableObject {
     /// Reset state to idle
     func reset() {
         state = .idle
+        isReminderCreation = false
+        reminderCreationDetails = ("", nil)
     }
 
     // MARK: - Settings Access

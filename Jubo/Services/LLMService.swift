@@ -74,8 +74,9 @@ class LLMService: ObservableObject {
 
     // Generation parameters - tuned for SmolLM3
     // SmolLM3 recommends: temperature=0.6, top_p=0.95
+    // maxTokens reduced to encourage brevity (model can still stop earlier)
     private let generateParameters = GenerateParameters(
-        maxTokens: 256,
+        maxTokens: 150,
         temperature: 0.6,
         topP: 0.95
     )

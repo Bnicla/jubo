@@ -180,11 +180,12 @@ class CalendarService: ObservableObject {
     /// Fetch events for tomorrow.
     func fetchTomorrowEvents() async -> [CalendarEvent] {
         let calendar = Calendar.current
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
-        let startOfDay = calendar.startOfDay(for: tomorrow)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        // Fix: Use startOfDay for today first, then add a day
+        let today = calendar.startOfDay(for: Date())
+        let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: today)!
+        let tomorrowEnd = calendar.date(byAdding: .day, value: 1, to: tomorrowStart)!
 
-        return await fetchEvents(from: startOfDay, to: endOfDay)
+        return await fetchEvents(from: tomorrowStart, to: tomorrowEnd)
     }
 
     /// Fetch events for this week.
@@ -194,6 +195,15 @@ class CalendarService: ObservableObject {
         let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfDay)!
 
         return await fetchEvents(from: startOfDay, to: endOfWeek)
+    }
+
+    /// Fetch events for a specific date.
+    func fetchEventsForDate(_ date: Date) async -> [CalendarEvent] {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+        return await fetchEvents(from: startOfDay, to: endOfDay)
     }
 
     /// Fetch events for a specific date range.
@@ -298,9 +308,16 @@ class CalendarService: ObservableObject {
             return false
         }
 
+        // Get default calendar first - it can be nil
+        guard let defaultCalendar = eventStore.defaultCalendarForNewReminders() else {
+            print("[Calendar] No default reminders calendar found")
+            return false
+        }
+
         let reminder = EKReminder(eventStore: eventStore)
         reminder.title = title
         reminder.notes = notes
+        reminder.calendar = defaultCalendar
 
         if let dueDate = dueDate {
             reminder.dueDateComponents = Calendar.current.dateComponents(
@@ -308,9 +325,6 @@ class CalendarService: ObservableObject {
                 from: dueDate
             )
         }
-
-        // Use default reminders calendar
-        reminder.calendar = eventStore.defaultCalendarForNewReminders()
 
         do {
             try eventStore.save(reminder, commit: true)
